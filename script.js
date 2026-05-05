@@ -1,95 +1,64 @@
 // ============================================================
-// AUDIO ENGINE — Web Audio API (no external files)
+// AUDIO ENGINE — Web Audio API
 // ============================================================
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
-let audioCtx    = null;
-let bgMusicOn   = false;
-let bgGain      = null;
+let audioCtx = null, bgMusicOn = false, bgGain = null;
 
 function getAudio() {
   if (!audioCtx) audioCtx = new AudioCtx();
   if (audioCtx.state === 'suspended') audioCtx.resume();
   return audioCtx;
 }
-
-function playTone(type, freq, duration, gain = 0.25, delay = 0, detune = 0) {
+function playTone(type, freq, duration, gain = 0.2, delay = 0) {
   try {
-    const ctx = getAudio();
-    const t   = ctx.currentTime + delay;
-    const osc = ctx.createOscillator();
-    const g   = ctx.createGain();
+    const ctx = getAudio(), t = ctx.currentTime + delay;
+    const osc = ctx.createOscillator(), g = ctx.createGain();
     osc.connect(g); g.connect(ctx.destination);
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, t);
-    osc.detune.setValueAtTime(detune, t);
+    osc.type = type; osc.frequency.setValueAtTime(freq, t);
     g.gain.setValueAtTime(0, t);
     g.gain.linearRampToValueAtTime(gain, t + 0.02);
     g.gain.exponentialRampToValueAtTime(0.0001, t + duration);
     osc.start(t); osc.stop(t + duration + 0.05);
   } catch(e) {}
 }
-
-// ── SFX ───────────────────────────────────────────────────
 function soundCorrect() {
-  playTone('sine', 523, 0.18, 0.28, 0);
-  playTone('sine', 659, 0.18, 0.28, 0.11);
-  playTone('sine', 784, 0.18, 0.28, 0.22);
-  playTone('sine', 1047,0.30, 0.35, 0.33);
-  playTone('triangle',1047,0.4,0.13,0.34);
+  playTone('sine', 523, 0.15, 0.22);
+  playTone('sine', 659, 0.15, 0.22, 0.1);
+  playTone('sine', 784, 0.15, 0.22, 0.2);
+  playTone('sine', 1047, 0.25, 0.3, 0.3);
 }
 function soundWrong() {
-  playTone('sawtooth', 220, 0.14, 0.22, 0);
-  playTone('sawtooth', 165, 0.18, 0.18, 0.11);
-  playTone('square',   110, 0.22, 0.18, 0.21);
+  playTone('sawtooth', 200, 0.12, 0.18);
+  playTone('sawtooth', 150, 0.15, 0.16, 0.1);
+  playTone('square', 100, 0.18, 0.16, 0.2);
 }
-function soundClick()  { playTone('triangle', 880, 0.07, 0.12, 0); }
-function soundFlip()   {
-  playTone('sine', 660, 0.10, 0.13, 0);
-  playTone('sine', 880, 0.09, 0.10, 0.09);
-}
-function soundLevelUp() {
-  [392,523,659,784,1047,1568].forEach((f,i) =>
-    playTone('sine', f, 0.28, 0.28, i * 0.09));
-}
+function soundClick()    { playTone('triangle', 880, 0.06, 0.1); }
+function soundFlip()     { playTone('sine', 440, 0.08, 0.12); playTone('sine', 660, 0.08, 0.1, 0.08); }
 function soundComplete() {
-  [1047,1319,1568,2093].forEach((f,i) => {
-    playTone('sine',    f,   0.55, 0.32, i*0.14);
-    playTone('triangle',f*2, 0.22, 0.15, i*0.14+0.05);
-  });
+  [1047, 1319, 1568, 2093].forEach((f, i) => playTone('sine', f, 0.5, 0.28, i * 0.12));
 }
 
-// ── CHILL AMBIENT BACKGROUND MUSIC ───────────────────────
-// Procedural: slow chord pads (Am7→Fmaj7→Cmaj7→G7) +
-//             pentatonic arpeggio + warm bass root
-const BPM      = 68;
-const BEAT     = 60 / BPM;
-const CHORD_BEATS = 8;
-const CHORD_DUR   = BEAT * CHORD_BEATS;
-
-// Each chord: [pad freqs], bass root
+// Background Music
+const BPM = 72, BEAT = 60 / BPM, CHORD_DUR = BEAT * 8;
 const CHORDS = [
-  { pads:[220,262,330,392], bass:110  },  // Am7
-  { pads:[175,220,262,349], bass:87.3 },  // Fmaj7
-  { pads:[131,165,196,262], bass:65.4 },  // Cmaj7
-  { pads:[196,247,294,392], bass:98   },  // G7
+  { pads: [220, 262, 330, 392], bass: 110  },
+  { pads: [175, 220, 262, 349], bass: 87.3 },
+  { pads: [131, 165, 196, 262], bass: 65.4 },
+  { pads: [196, 247, 294, 392], bass: 98   },
 ];
-// Am pentatonic scale (multi-octave)
-const PENTA = [220,247,262,294,330,392,440,494,523,587,659,784];
+const PENTA = [220, 247, 262, 294, 330, 392, 440, 494, 523, 587, 659, 784];
 
 function startBgMusic() {
-  if (bgMusicOn) return;
-  bgMusicOn = true;
+  if (bgMusicOn) return; bgMusicOn = true;
   const ctx = getAudio();
   bgGain = ctx.createGain();
   bgGain.gain.setValueAtTime(0, ctx.currentTime);
-  bgGain.gain.linearRampToValueAtTime(0.20, ctx.currentTime + 4);
+  bgGain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 4);
   bgGain.connect(ctx.destination);
-
   padLoop(ctx, ctx.currentTime);
   bassLoop(ctx, ctx.currentTime + 0.5);
-  arpeggioLoop(ctx, ctx.currentTime + 5); // arp enters after pads bloom
+  arpeggioLoop(ctx, ctx.currentTime + 5);
 }
-
 function stopBgMusic() {
   if (!bgGain || !audioCtx) return;
   try {
@@ -99,298 +68,262 @@ function stopBgMusic() {
   } catch(e) {}
   setTimeout(() => { bgMusicOn = false; bgGain = null; }, 2500);
 }
-
-// Pad: detuned sine layers with long fade in/out
-function padLoop(ctx, startTime) {
+function padLoop(ctx, st) {
   if (!bgMusicOn) return;
   CHORDS.forEach((chord, ci) => {
     chord.pads.forEach(freq => {
-      [-8, 0, 8].forEach(det => {
+      [-7, 0, 7].forEach(det => {
         try {
-          const when = startTime + ci * CHORD_DUR;
-          const osc  = ctx.createOscillator();
-          const g    = ctx.createGain();
+          const when = st + ci * CHORD_DUR;
+          const osc = ctx.createOscillator(), g = ctx.createGain();
           osc.connect(g); g.connect(bgGain);
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(freq, when);
+          osc.type = 'sine'; osc.frequency.setValueAtTime(freq, when);
           osc.detune.setValueAtTime(det, when);
           g.gain.setValueAtTime(0, when);
-          g.gain.linearRampToValueAtTime(0.065, when + 1.8);
-          g.gain.setValueAtTime(0.065, when + CHORD_DUR - 1.5);
+          g.gain.linearRampToValueAtTime(0.055, when + 1.8);
+          g.gain.setValueAtTime(0.055, when + CHORD_DUR - 1.5);
           g.gain.linearRampToValueAtTime(0, when + CHORD_DUR + 0.1);
-          osc.start(when);
-          osc.stop(when + CHORD_DUR + 0.15);
+          osc.start(when); osc.stop(when + CHORD_DUR + 0.15);
         } catch(e) {}
       });
     });
   });
-
   const loopDur = CHORDS.length * CHORD_DUR;
-  setTimeout(() => {
-    if (!bgMusicOn) return;
-    padLoop(ctx, startTime + loopDur);
-  }, (loopDur - 2.5) * 1000);
+  setTimeout(() => { if (bgMusicOn) padLoop(ctx, st + loopDur); }, (loopDur - 2.5) * 1000);
 }
-
-// Bass: slow root notes
-function bassLoop(ctx, startTime) {
+function bassLoop(ctx, st) {
   if (!bgMusicOn) return;
   CHORDS.forEach((chord, ci) => {
-    const when = startTime + ci * CHORD_DUR;
+    const when = st + ci * CHORD_DUR;
     try {
-      const osc = ctx.createOscillator();
-      const g   = ctx.createGain();
+      const osc = ctx.createOscillator(), g = ctx.createGain();
       osc.connect(g); g.connect(bgGain);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(chord.bass, when);
+      osc.type = 'sine'; osc.frequency.setValueAtTime(chord.bass, when);
       g.gain.setValueAtTime(0, when);
-      g.gain.linearRampToValueAtTime(0.13, when + 0.5);
-      g.gain.setValueAtTime(0.13, when + CHORD_DUR - 0.8);
+      g.gain.linearRampToValueAtTime(0.11, when + 0.5);
+      g.gain.setValueAtTime(0.11, when + CHORD_DUR - 0.8);
       g.gain.linearRampToValueAtTime(0, when + CHORD_DUR);
       osc.start(when); osc.stop(when + CHORD_DUR + 0.1);
     } catch(e) {}
   });
-
   const loopDur = CHORDS.length * CHORD_DUR;
-  setTimeout(() => {
-    if (!bgMusicOn) return;
-    bassLoop(ctx, startTime + loopDur);
-  }, (loopDur - 2) * 1000);
+  setTimeout(() => { if (bgMusicOn) bassLoop(ctx, st + loopDur); }, (loopDur - 2) * 1000);
 }
-
-// Arpeggio: gentle pentatonic melody, quarter-note grid
-function arpeggioLoop(ctx, startTime) {
+function arpeggioLoop(ctx, st) {
   if (!bgMusicOn) return;
-  const NOTES  = 32;
-  const noteDur = BEAT * 0.95;
-
-  // Generate a pattern with musical phrasing:
-  // more likely to go to nearby notes (random walk)
+  const NOTES = 32, noteDur = BEAT * 0.9;
   let idx = Math.floor(PENTA.length / 2);
   const pattern = [];
   for (let i = 0; i < NOTES; i++) {
     pattern.push(PENTA[idx]);
-    const step = Math.floor(Math.random() * 3) - 1; // -1, 0, +1
-    idx = Math.max(0, Math.min(PENTA.length - 1, idx + step));
+    idx = Math.max(0, Math.min(PENTA.length - 1, idx + (Math.floor(Math.random() * 3) - 1)));
   }
-
   pattern.forEach((freq, i) => {
-    if (Math.random() < 0.28) return; // ~28% rests for breathing room
-    const t = startTime + i * BEAT;
+    if (Math.random() < 0.28) return;
+    const t = st + i * BEAT;
     try {
-      const osc = ctx.createOscillator();
-      const g   = ctx.createGain();
+      const osc = ctx.createOscillator(), g = ctx.createGain();
       osc.connect(g); g.connect(bgGain);
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(freq, t);
+      osc.type = 'triangle'; osc.frequency.setValueAtTime(freq, t);
       g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.048, t + 0.03);
+      g.gain.linearRampToValueAtTime(0.04, t + 0.03);
       g.gain.exponentialRampToValueAtTime(0.0001, t + noteDur * 0.75);
       osc.start(t); osc.stop(t + noteDur);
     } catch(e) {}
   });
-
   const loopDur = NOTES * BEAT;
-  setTimeout(() => {
-    if (!bgMusicOn) return;
-    arpeggioLoop(ctx, startTime + loopDur);
-  }, (loopDur - 1) * 1000);
+  setTimeout(() => { if (bgMusicOn) arpeggioLoop(ctx, st + loopDur); }, (loopDur - 1) * 1000);
 }
 
 // ============================================================
-// PARTICLES
+// PASSWORD HASHING
 // ============================================================
-function spawnParticles() {
-  const container = document.getElementById('bg-particles');
-  const colors = ['#c9a84c','#8b2fc9','#c0314a','#2ecc71','#bf7fff'];
-  for (let i = 0; i < 30; i++) {
-    const p     = document.createElement('div');
-    p.className = 'particle';
-    const size  = Math.random() * 3 + 1;
-    const x     = Math.random() * 100;
-    const dur   = Math.random() * 20 + 15;
-    const delay = Math.random() * 20;
-    const color = colors[Math.floor(Math.random() * colors.length)];
-    p.style.cssText = `width:${size}px;height:${size}px;left:${x}%;bottom:-10px;
-      background:${color};animation-duration:${dur}s;animation-delay:-${delay}s;
-      box-shadow:0 0 ${size*2}px ${color};`;
-    container.appendChild(p);
-  }
+async function hashPassword(pw) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
-spawnParticles();
+
+// ============================================================
+// PERSISTENT STORAGE
+// ============================================================
+function saveData() {
+  localStorage.setItem('devquiz_players', JSON.stringify(players));
+}
+function loadData() {
+  try {
+    const raw = localStorage.getItem('devquiz_players');
+    if (raw) players = JSON.parse(raw);
+  } catch(e) { players = []; }
+}
 
 // ============================================================
 // DIFFICULTY CONFIG
-// Beginner:  Lv 1-2 → 10 questions  (easy pool)
-// Normal:    Lv 1-3 → 15 questions  (medium pool)
-// Expert:    Lv 1-5 → 20 questions  (full pool, harder skew)
 // ============================================================
 const difficultyConfig = {
-  beginner: {
-    levels:  [1, 2],
-    qCount:  10,
-    // weight: how many questions to take from each level (ratio)
-    weights: { 1: 0.6, 2: 0.4 },
-    label:   '🌿 Beginner',
-    badge:   'beginner',
-  },
-  normal: {
-    levels:  [1, 2, 3],
-    qCount:  15,
-    weights: { 1: 0.33, 2: 0.34, 3: 0.33 },
-    label:   '⚔️ Normal',
-    badge:   'normal',
-  },
-  expert: {
-    levels:  [1, 2, 3, 4, 5],
-    qCount:  20,
-    // Expert skews harder: more from levels 3-5
-    weights: { 1: 0.10, 2: 0.15, 3: 0.25, 4: 0.25, 5: 0.25 },
-    label:   '💀 Expert',
-    badge:   'expert',
-  },
+  beginner: { levels: [1, 2], qCount: 10, weights: {1: 0.6, 2: 0.4}, label: '🌿 Beginner', badge: 'beginner' },
+  normal:   { levels: [1, 2, 3], qCount: 15, weights: {1: 0.33, 2: 0.34, 3: 0.33}, label: '⚔️ Normal', badge: 'normal' },
+  expert:   { levels: [1, 2, 3, 4, 5], qCount: 20, weights: {1: 0.10, 2: 0.15, 3: 0.25, 4: 0.25, 5: 0.25}, label: '💀 Expert', badge: 'expert' },
 };
 
 // ============================================================
-// PLAYERS & STATE
+// STATE
 // ============================================================
-let players    = [];
-let currentPlayer       = null;
-let playerAvatar        = '';
-let selectedDifficulty  = 'normal';
-let index      = 0;
-let score      = 0;
-let category   = 'javascript';
-let currentQuestions    = [];
-let answered            = false;
-let pendingCorrect      = false;
+let players          = [];
+let currentPlayer    = null;
+let selectedAvatar   = '';
+let index            = 0;
+let score            = 0;
+let category         = 'javascript';
+let currentDiff      = 'normal';
+let currentQuestions = [];
+let isFlipped        = false;
+let isGraded         = false;
+let sessionHistory   = [];
+let currentChoices   = [];
+
+loadData();
 
 // ============================================================
-// BUILD QUESTION POOL
-// Takes weighted samples from each level, then shuffles the
-// final pool so questions appear in random order (not level order)
+// AUTH TAB SWITCH
 // ============================================================
-function buildQuestionPool(cat, diff) {
-  const cfg     = difficultyConfig[diff];
-  const total   = cfg.qCount;
-  let   pool    = [];
-
-  cfg.levels.forEach(lvl => {
-    const all    = database[cat]['level' + lvl] || [];
-    const frac   = cfg.weights[lvl] || (1 / cfg.levels.length);
-    const want   = Math.round(total * frac);
-    const sample = shuffle(all).slice(0, want);
-    // Tag each question with its source level (shown in level-tag)
-    sample.forEach(q => pool.push({ ...q, _level: lvl }));
+function switchTab(tab) {
+  soundClick();
+  document.querySelectorAll('.auth-tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'));
   });
-
-  // Full shuffle so levels are interleaved, not grouped
-  pool = shuffle(pool);
-
-  // Trim/pad to exact count if rounding caused drift
-  return pool.slice(0, total);
+  document.getElementById('login-form').classList.toggle('hidden', tab !== 'login');
+  document.getElementById('register-form').classList.toggle('hidden', tab !== 'register');
+  document.getElementById('login-error').classList.add('hidden');
+  document.getElementById('reg-error').classList.add('hidden');
+}
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.classList.remove('hidden');
+}
+function togglePw(inputId, btn) {
+  const inp = document.getElementById(inputId);
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  btn.textContent = inp.type === 'password' ? '👁' : '🙈';
 }
 
 // ============================================================
-// AVATAR & DIFFICULTY UI
+// AVATAR SELECT
 // ============================================================
-document.querySelectorAll('.avatar').forEach(img => {
+document.querySelectorAll('#reg-avatars .avatar').forEach(img => {
   img.addEventListener('click', () => {
     soundClick();
-    playerAvatar = img.src;
-    document.querySelectorAll('.avatar').forEach(a => a.classList.remove('selected'));
+    selectedAvatar = img.src;
+    document.querySelectorAll('#reg-avatars .avatar').forEach(a => a.classList.remove('selected'));
     img.classList.add('selected');
   });
 });
 
-document.querySelectorAll('.diff-card').forEach(card => {
-  card.addEventListener('click', () => {
-    soundClick();
-    selectedDifficulty = card.dataset.diff;
-  });
-});
-
 // ============================================================
-// LOGIN / LOGOUT
+// REGISTER
 // ============================================================
-function loginPlayer() {
-  const username  = document.getElementById('username').value.trim();
-  category        = document.getElementById('category').value;
-  const diffInput = document.querySelector('input[name="difficulty"]:checked');
-  selectedDifficulty = diffInput ? diffInput.value : 'normal';
+async function registerPlayer() {
+  const username = document.getElementById('reg-username').value.trim();
+  const pw       = document.getElementById('reg-password').value;
+  const confirm  = document.getElementById('reg-confirm').value;
 
-  if (!username)     { alert('Enter your name, warrior.');  return; }
-  if (!playerAvatar) { alert('Choose your seal first.');    return; }
-
-  soundClick();
-  let existing = players.find(p => p.name === username);
-  if (existing) {
-    currentPlayer = existing;
-  } else {
-    currentPlayer = { name: username, score: 0, avatar: playerAvatar,
-                      category, difficulty: selectedDifficulty };
-    players.push(currentPlayer);
+  if (!selectedAvatar)  { showError('reg-error', 'Please choose an avatar.');                 return; }
+  if (!username)         { showError('reg-error', 'Username is required.');                   return; }
+  if (username.length < 2) { showError('reg-error', 'Username must be at least 2 characters.'); return; }
+  if (!pw)               { showError('reg-error', 'Password is required.');                   return; }
+  if (pw.length < 4)     { showError('reg-error', 'Password must be at least 4 characters.'); return; }
+  if (pw !== confirm)    { showError('reg-error', 'Passwords do not match.');                 return; }
+  if (players.find(p => p.name.toLowerCase() === username.toLowerCase())) {
+    showError('reg-error', 'Username already taken.'); return;
   }
-
-  hideAllPanels();
-  document.getElementById('player-dashboard').classList.remove('hidden');
-  updateDashboard();
+  soundClick();
+  const hash = await hashPassword(pw);
+  const newPlayer = {
+    name: username, passwordHash: hash, avatar: selectedAvatar,
+    score: 0, totalQuestions: 0, totalCorrect: 0, history: [],
+  };
+  players.push(newPlayer);
+  saveData();
+  currentPlayer = newPlayer;
+  goToDashboard();
 }
 
-function logoutPlayer() {
+// ============================================================
+// LOGIN
+// ============================================================
+async function loginPlayer() {
+  const username = document.getElementById('login-username').value.trim();
+  const pw       = document.getElementById('login-password').value;
+  if (!username) { showError('login-error', 'Enter your username.'); return; }
+  if (!pw)       { showError('login-error', 'Enter your password.'); return; }
+  const player = players.find(p => p.name.toLowerCase() === username.toLowerCase());
+  if (!player)   { showError('login-error', 'Account not found.'); return; }
+  const hash = await hashPassword(pw);
+  if (hash !== player.passwordHash) { showError('login-error', 'Wrong password.'); return; }
   soundClick();
-  stopBgMusic();
+  currentPlayer = player;
+  goToDashboard();
+}
+
+// ============================================================
+// LOGOUT
+// ============================================================
+function logoutPlayer() {
+  soundClick(); stopBgMusic();
+  currentPlayer = null; selectedAvatar = '';
   hideAllPanels();
-  document.getElementById('player-login').classList.remove('hidden');
-  currentPlayer = null; playerAvatar = '';
-  document.querySelectorAll('.avatar').forEach(a => a.classList.remove('selected'));
-  document.getElementById('username').value = '';
+  document.getElementById('auth-panel').classList.remove('hidden');
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
 }
 
 // ============================================================
 // DASHBOARD
 // ============================================================
+function goToDashboard() {
+  hideAllPanels();
+  document.getElementById('player-dashboard').classList.remove('hidden');
+  updateDashboard();
+}
 function updateDashboard() {
-  const diff = currentPlayer.difficulty || 'normal';
-  const cfg  = difficultyConfig[diff];
-
-  document.getElementById('dashboard-avatar').src      = currentPlayer.avatar;
-  document.getElementById('dashboard-name').innerText  = currentPlayer.name;
-  document.getElementById('dashboard-score').innerText = `⚜ Score: ${currentPlayer.score}`;
-  document.getElementById('dashboard-diff').innerText  = cfg.label;
-
-  const labelsEl = document.getElementById('level-labels');
-  labelsEl.innerHTML = '';
-  cfg.levels.forEach(l => {
-    const sp = document.createElement('span'); sp.innerText = `Lv${l}`;
-    labelsEl.appendChild(sp);
-  });
-
-  const pct = Math.min(100, (currentPlayer.score / (cfg.qCount || 10)) * 100);
-  document.getElementById('level-fill').style.width      = pct + '%';
-  document.getElementById('level-fill-glow').style.width = pct + '%';
+  if (!currentPlayer) return;
+  document.getElementById('dash-avatar').src = currentPlayer.avatar;
+  document.getElementById('dash-name').textContent = currentPlayer.name;
+  const sessions = (currentPlayer.history || []).length;
+  const rate = currentPlayer.totalQuestions
+    ? Math.round((currentPlayer.totalCorrect / currentPlayer.totalQuestions) * 100) : 0;
+  document.getElementById('dash-stats-row').innerHTML = `
+    <span class="stat-chip">Score: <strong>${currentPlayer.score}</strong></span>
+    <span class="stat-chip">Accuracy: <strong>${rate}%</strong></span>
+    <span class="stat-chip">Sessions: <strong>${sessions}</strong></span>
+  `;
 }
 
 // ============================================================
-// QUIZ
+// QUIZ START
 // ============================================================
 function startQuiz() {
   soundClick();
+  category    = document.getElementById('dash-category').value;
+  currentDiff = document.getElementById('dash-difficulty').value;
+  index = 0; score = 0;
+  sessionHistory = [];
+  currentQuestions = buildQuestionPool(category, currentDiff);
   hideAllPanels();
   document.getElementById('quiz').classList.remove('hidden');
+  document.getElementById('quiz-avatar').src = currentPlayer.avatar;
   startBgMusic();
-
-  category = currentPlayer.category;
-  const diff = currentPlayer.difficulty || 'normal';
-
-  index = 0; score = 0;
-  currentQuestions = buildQuestionPool(category, diff);
-
-  document.getElementById('player-avatar').src = currentPlayer.avatar;
-  resetFlipCard();
   showQ();
 }
-
+function buildQuestionPool(cat, diff) {
+  const cfg = difficultyConfig[diff];
+  let pool = [];
+  cfg.levels.forEach(lvl => {
+    const all  = database[cat]['level' + lvl] || [];
+    const want = Math.round(cfg.qCount * (cfg.weights[lvl] || 1 / cfg.levels.length));
+    shuffle(all).slice(0, want).forEach(q => pool.push({ ...q, _level: lvl }));
+  });
+  return shuffle(pool).slice(0, cfg.qCount);
+}
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -400,84 +333,246 @@ function shuffle(arr) {
   return a;
 }
 
+// ============================================================
+// GENERATE MULTIPLE CHOICE OPTIONS
+// ============================================================
+function buildChoices(correctAnswer, cat) {
+  // Gather all answers from the same category across all levels
+  const allAnswers = [];
+  Object.values(database[cat]).forEach(levelArr => {
+    levelArr.forEach(q => {
+      if (q.a !== correctAnswer) allAnswers.push(q.a);
+    });
+  });
+  // Shuffle and pick 3 distractors
+  const distractors = shuffle(allAnswers).slice(0, 3);
+  // Combine with correct, shuffle
+  const choices = shuffle([correctAnswer, ...distractors]);
+  return choices;
+}
+
+// ============================================================
+// SHOW QUESTION (flashcard front)
+// ============================================================
 function showQ() {
-  answered = false; pendingCorrect = false;
-  resetFlipCard();
+  isFlipped = false;
+  isGraded  = false;
 
-  const q    = currentQuestions[index];
-  const diff = currentPlayer.difficulty || 'normal';
-  const cfg  = difficultyConfig[diff];
+  const q     = currentQuestions[index];
+  const cfg   = difficultyConfig[currentDiff];
+  const total = currentQuestions.length;
 
-  document.getElementById('q-number').innerText  = `Q${index + 1} / ${currentQuestions.length}`;
-  document.getElementById('question').innerText   = q.q;
-  document.getElementById('level-tag').innerText  =
-    `${cfg.label}  •  Q${index + 1}/${currentQuestions.length}  •  Lv${q._level}`;
-  document.getElementById('flip-hint').innerText  = 'Select an answer to reveal the rune';
+  // Reset card to front
+  const card = document.getElementById('flashcard');
+  card.classList.remove('is-flipped');
 
-  const div = document.getElementById('choices');
-  div.innerHTML = '';
-  shuffle(q.choices).forEach(choice => {
+  // Progress
+  const pct = (index / total) * 100;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('prog-score').textContent = `Score: ${score}`;
+  document.getElementById('prog-tag').textContent = `${cfg.label}  ·  Lv${q._level}`;
+  document.getElementById('quiz-progress-info').textContent = `Card ${index + 1} / ${total}`;
+
+  // Front content
+  document.getElementById('fc-meta-front').textContent =
+    `${category.toUpperCase()} · Level ${q._level}`;
+  document.getElementById('fc-question').textContent = q.q;
+
+  // Back content — reset
+  document.getElementById('fc-answer').textContent = q.a;
+  document.getElementById('fc-exp-loader').style.display = 'flex';
+  document.getElementById('fc-exp-text').style.display   = 'none';
+  document.getElementById('fc-exp-text').textContent     = '';
+
+  // Build multiple choice options
+  currentChoices = buildChoices(q.a, category);
+  renderChoices(currentChoices, q.a);
+
+  // Re-show grade buttons area, hide feedback
+  document.getElementById('fc-grade-btns').style.display = '';
+  const fb = document.getElementById('grade-feedback');
+  fb.classList.add('hidden');
+  fb.classList.remove('correct-fb', 'wrong-fb');
+
+  // Show flip hint
+  document.getElementById('flip-hint').style.opacity = '1';
+}
+
+// ============================================================
+// RENDER MULTIPLE CHOICE BUTTONS
+// ============================================================
+function renderChoices(choices, correctAnswer) {
+  const container = document.getElementById('fc-choices');
+  container.innerHTML = '';
+  container.style.display = 'grid';
+  choices.forEach((choice, i) => {
     const btn = document.createElement('button');
-    btn.innerText = choice;
-    btn.classList.add('choice-btn');
-    btn.onclick = () => pickAnswer(choice, btn);
-    div.appendChild(btn);
+    btn.className = 'fc-choice-btn';
+    btn.dataset.answer = choice;
+    btn.dataset.correct = (choice === correctAnswer) ? 'true' : 'false';
+    const label = String.fromCharCode(65 + i); // A, B, C...
+    btn.innerHTML = `<span class="fc-choice-label">${label}</span><span class="fc-choice-text">${choice}</span>`;
+    btn.addEventListener('click', (e) => onChoiceClick(btn, correctAnswer, e));
+    container.appendChild(btn);
   });
 }
 
-function resetFlipCard() {
-  document.getElementById('flip-inner').classList.remove('flipped');
-  document.getElementById('flip-back').className = 'flip-back';
-}
+// ============================================================
+// HANDLE CHOICE CLICK
+// ============================================================
+function onChoiceClick(btn, correctAnswer, event) {
+  event.stopPropagation();
+  if (isGraded) return;
 
-function pickAnswer(choice, btn) {
-  if (answered) return;
-  answered = true;
-  soundClick();
-  document.querySelectorAll('.choice-btn').forEach(b => b.disabled = true);
+  // Grade immediately based on the choice
+  const isCorrect = btn.dataset.correct === 'true';
+  gradeByChoice(isCorrect, btn, correctAnswer);
 
-  const correct   = currentQuestions[index].a;
-  const isCorrect = choice === correct;
-  pendingCorrect  = isCorrect;
-
-  btn.classList.add(isCorrect ? 'correct' : 'wrong');
-  if (!isCorrect) {
-    document.querySelectorAll('.choice-btn').forEach(b => {
-      if (b.innerText === correct) b.classList.add('correct');
-    });
-  }
-
-  document.getElementById('back-result-icon').innerText = isCorrect ? '✅' : '❌';
-  document.getElementById('back-result-text').innerText = isCorrect ? 'Correct! +1 Point' : 'Wrong!';
-  document.getElementById('back-result-text').className = 'back-result-text ' + (isCorrect ? 'text-green' : 'text-red');
-  document.getElementById('back-your').innerText    = choice;
-  document.getElementById('back-correct').innerText = correct;
-  document.getElementById('flip-back').className    = 'flip-back ' + (isCorrect ? 'back-correct' : 'back-wrong');
-
+  // Flip the card after a short pause so player sees the choice result first
   setTimeout(() => {
-    document.getElementById('flip-inner').classList.add('flipped');
-    document.getElementById('flip-hint').innerText = 'Flip back to review choices ↺';
-    if (isCorrect) soundCorrect(); else soundWrong();
-  }, 320);
+    if (!isFlipped) {
+      soundFlip();
+      isFlipped = true;
+      document.getElementById('flashcard').classList.add('is-flipped');
+      document.getElementById('flip-hint').style.opacity = '0';
+      const q = currentQuestions[index];
+      loadExplanation(q.q, q.a);
+    }
+  }, 600);
 }
 
-// Tap card body to flip back and forth (not the Next button)
-document.getElementById('flip-card')?.addEventListener('click', function(e) {
-  if (!answered) return;
-  if (e.target.id === 'btn-next' || e.target.closest('#btn-next')) return;
-  soundFlip();
-  const inner   = document.getElementById('flip-inner');
-  const flipped = inner.classList.toggle('flipped');
-  document.getElementById('flip-hint').innerText = flipped
-    ? 'Flip back to review choices ↺'
-    : 'Flip to see result ↺';
-});
+// ============================================================
+// GRADE BY CHOICE SELECTION
+// ============================================================
+function gradeByChoice(isCorrect, selectedBtn, correctAnswer) {
+  if (isGraded) return;
+  isGraded = true;
 
-function nextQuestion(e) {
-  e.stopPropagation();
+  const q = currentQuestions[index];
+  if (isCorrect) { score++; soundCorrect(); } else { soundWrong(); }
+
+  // Highlight all buttons
+  document.querySelectorAll('.fc-choice-btn').forEach(btn => {
+    btn.disabled = true;
+    if (btn.dataset.correct === 'true') {
+      btn.classList.add('choice-correct');
+    } else if (btn === selectedBtn && !isCorrect) {
+      btn.classList.add('choice-wrong');
+    } else {
+      btn.classList.add('choice-dim');
+    }
+  });
+
+  // Record in session history
+  sessionHistory.push({
+    question: q.q,
+    correctAnswer: q.a,
+    selectedAnswer: selectedBtn.dataset.answer,
+    isCorrect,
+    level: q._level,
+    category,
+  });
+
+  // Hide self-grade buttons (not needed since choice handles grading)
+  document.getElementById('fc-grade-btns').style.display = 'none';
+
+  // Show feedback bar
+  const fb = document.getElementById('grade-feedback');
+  const fbText = document.getElementById('grade-feedback-text');
+  fb.classList.remove('hidden', 'correct-fb', 'wrong-fb');
+
+  if (isCorrect) {
+    fb.classList.add('correct-fb');
+    fbText.innerHTML = `<span style="color:var(--green2)">✓ Correct!</span> · ${score} pts`;
+  } else {
+    fb.classList.add('wrong-fb');
+    fbText.innerHTML = `<span style="color:var(--red)">✗ Wrong</span> · Answer: <span style="color:var(--green2)">${correctAnswer}</span>`;
+  }
+}
+
+// ============================================================
+// FLIP CARD — disabled for manual tap, only triggered after answer selection
+// ============================================================
+function flipCard() {
+  // Intentionally blocked — card flips automatically after player picks an answer
+}
+
+// ============================================================
+// AI EXPLANATION
+// ============================================================
+async function loadExplanation(question, correctAnswer) {
+  try {
+    const prompt = `You are a concise coding instructor.
+
+Question: "${question}"
+Correct Answer: "${correctAnswer}"
+
+In 2-3 sentences, explain WHY "${correctAnswer}" is correct and clarify any common misconception. Be direct and educational. No greeting or preamble.`;
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 200,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const data = await res.json();
+    const text = data.content?.find(c => c.type === 'text')?.text || 'No explanation available.';
+    document.getElementById('fc-exp-loader').style.display = 'none';
+    const expEl = document.getElementById('fc-exp-text');
+    expEl.textContent = text;
+    expEl.style.display = 'block';
+  } catch(e) {
+    document.getElementById('fc-exp-loader').style.display = 'none';
+    const expEl = document.getElementById('fc-exp-text');
+    expEl.textContent = `The correct answer is "${correctAnswer}". Review the relevant documentation to deepen your understanding.`;
+    expEl.style.display = 'block';
+  }
+}
+
+// ============================================================
+// GRADE CARD (self-assessment: ✓ / ✗) — kept as fallback
+// ============================================================
+function gradeCard(isCorrect, event) {
+  event.stopPropagation();
+  if (isGraded) return;
+  isGraded = true;
+
+  const q = currentQuestions[index];
+  if (isCorrect) { score++; soundCorrect(); } else { soundWrong(); }
+
+  sessionHistory.push({
+    question: q.q,
+    correctAnswer: q.a,
+    selectedAnswer: isCorrect ? q.a : '(self-marked wrong)',
+    isCorrect,
+    level: q._level,
+    category,
+  });
+
+  document.getElementById('fc-grade-btns').style.display = 'none';
+
+  const fb = document.getElementById('grade-feedback');
+  const fbText = document.getElementById('grade-feedback-text');
+  fb.classList.remove('hidden', 'correct-fb', 'wrong-fb');
+
+  if (isCorrect) {
+    fb.classList.add('correct-fb');
+    fbText.innerHTML = `<span style="color:var(--green2)">✓ Marked correct</span> · ${score} pts`;
+  } else {
+    fb.classList.add('wrong-fb');
+    fbText.innerHTML = `<span style="color:var(--red)">✗ Marked wrong</span> · Keep studying!`;
+  }
+}
+
+// ============================================================
+// NEXT QUESTION
+// ============================================================
+function nextQuestion() {
   soundClick();
-  if (pendingCorrect) { score++; currentPlayer.score++; updateDashboard(); }
-  pendingCorrect = false;
   index++;
   if (index < currentQuestions.length) {
     showQ();
@@ -486,254 +581,328 @@ function nextQuestion(e) {
   }
 }
 
+// ============================================================
+// FINISH QUIZ
+// ============================================================
 function finishQuiz() {
-  soundComplete();
-  stopBgMusic();
+  soundComplete(); stopBgMusic();
+
+  currentPlayer.score          += score;
+  currentPlayer.totalQuestions  = (currentPlayer.totalQuestions || 0) + currentQuestions.length;
+  currentPlayer.totalCorrect    = (currentPlayer.totalCorrect || 0) + score;
+
+  if (!currentPlayer.history) currentPlayer.history = [];
+  currentPlayer.history.unshift({
+    date: new Date().toLocaleString(),
+    category, difficulty: currentDiff,
+    score, total: currentQuestions.length,
+    questions: sessionHistory,
+  });
+  if (currentPlayer.history.length > 20) currentPlayer.history = currentPlayer.history.slice(0, 20);
+
+  saveData();
   hideAllPanels();
   document.getElementById('result').classList.remove('hidden');
-  document.getElementById('score').innerText =
-    `${score} / ${currentQuestions.length} correct  —  ${currentPlayer.score} total pts`;
-  const sorted = [...players].sort((a,b) => b.score - a.score);
-  const rank   = sorted.findIndex(p => p.name === currentPlayer.name) + 1;
-  document.getElementById('result-rank').innerText =
-    `Your Rank: #${rank} of ${players.length} warriors`;
+  document.getElementById('final-score-display').textContent = `${score} / ${currentQuestions.length} correct`;
+
+  const sorted = [...players].sort((a, b) => b.score - a.score);
+  const rank = sorted.findIndex(p => p.name === currentPlayer.name) + 1;
+  document.getElementById('final-rank-display').textContent = `Rank #${rank} of ${players.length} players`;
 }
 
 // ============================================================
-// HIDE ALL
+// HISTORY
 // ============================================================
-function hideAllPanels() {
-  ['player-login','player-dashboard','quiz','result','ranking'].forEach(id => {
-    document.getElementById(id).classList.add('hidden');
+function showHistory() {
+  soundClick(); hideAllPanels();
+  document.getElementById('history-panel').classList.remove('hidden');
+  renderHistory();
+}
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  list.innerHTML = '';
+  const history = currentPlayer?.history || [];
+  if (!history.length) {
+    list.innerHTML = '<div class="history-empty">No sessions yet. Play a quiz to build your history!</div>';
+    return;
+  }
+  history.forEach((session, si) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'history-session';
+    const rate = Math.round((session.score / session.total) * 100);
+    const header = document.createElement('div');
+    header.className = 'history-session-header';
+    header.innerHTML = `
+      <div class="history-session-meta">
+        ${session.date}<br>
+        <span style="color:var(--green3)">${session.category?.toUpperCase()}</span>
+        <span class="diff-badge ${session.difficulty}">${session.difficulty}</span>
+      </div>
+      <div class="history-session-score">${session.score}/${session.total} · ${rate}%</div>
+    `;
+    const body = document.createElement('div');
+    body.className = 'history-session-body';
+    body.style.display = si === 0 ? 'block' : 'none';
+
+    (session.questions || []).forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'history-q-item';
+      const selectedDisplay = item.selectedAnswer && item.selectedAnswer !== item.correctAnswer
+        ? `<span class="hq-ans yours wrong-ans">You: ${item.selectedAnswer}</span>`
+        : (item.isCorrect ? `<span class="hq-ans yours">✓ You got it</span>` : `<span class="hq-ans yours wrong-ans">✗ You missed it</span>`);
+      row.innerHTML = `
+        <div class="hq-icon">${item.isCorrect ? '✅' : '❌'}</div>
+        <div class="hq-body">
+          <div class="hq-question">${item.question}</div>
+          <div class="hq-answers">
+            <span class="hq-ans correct-ans">Answer: ${item.correctAnswer}</span>
+            ${selectedDisplay}
+          </div>
+          <div class="hq-level">Level ${item.level}</div>
+        </div>
+      `;
+      body.appendChild(row);
+    });
+
+    header.onclick = () => {
+      body.style.display = body.style.display === 'none' ? 'block' : 'none';
+    };
+    wrapper.appendChild(header);
+    wrapper.appendChild(body);
+    list.appendChild(wrapper);
   });
-}
-
-function goBack() {
-  soundClick();
-  stopBgMusic();
-  hideAllPanels();
-  document.getElementById('player-dashboard').classList.remove('hidden');
-  updateDashboard();
 }
 
 // ============================================================
 // RANKING
 // ============================================================
 function showRanking() {
-  soundClick();
-  hideAllPanels();
+  soundClick(); hideAllPanels();
   document.getElementById('ranking').classList.remove('hidden');
   renderRanking();
 }
-
 function renderRanking() {
   const list = document.getElementById('rank-list');
   list.innerHTML = '';
   if (!players.length) {
-    list.innerHTML = '<p class="no-players">No warriors yet. Be the first legend!</p>';
+    list.innerHTML = '<div class="rank-empty">No warriors yet. Be the first legend!</div>';
     return;
   }
-  const sorted = [...players].sort((a,b) => b.score - a.score);
-  const medals = ['🥇','🥈','🥉'];
+  const sorted = [...players].sort((a, b) => b.score - a.score);
+  const medals = ['🥇', '🥈', '🥉'];
   sorted.forEach((p, i) => {
     const isMe = currentPlayer && p.name === currentPlayer.name;
-    const diff = p.difficulty || 'normal';
-    const row  = document.createElement('div');
+    const rate = p.totalQuestions ? Math.round((p.totalCorrect / p.totalQuestions) * 100) : 0;
+    const row = document.createElement('div');
     row.className = 'rank-row' + (isMe ? ' rank-me' : '');
     row.innerHTML = `
-      <span class="rank-pos">${medals[i] || '#'+(i+1)}</span>
-      <img src="${p.avatar}" class="rank-avatar">
+      <span class="rank-pos">${medals[i] || '#' + (i + 1)}</span>
+      <img src="${p.avatar}" class="rank-avatar" alt="">
       <div class="rank-info">
-        <span class="rank-name">${p.name}${isMe ? ' <span class="you-tag">YOU</span>' : ''}</span>
-        <span class="rank-cat">${p.category} <span class="diff-badge ${diff}">${diff}</span></span>
+        <div class="rank-name">${p.name}${isMe ? ' <span class="you-tag">YOU</span>' : ''}</div>
+        <div class="rank-sub">${p.totalQuestions || 0} cards · ${rate}% accuracy</div>
       </div>
-      <span class="rank-score">${p.score} pts</span>`;
+      <span class="rank-score">${p.score} pts</span>
+    `;
     list.appendChild(row);
   });
 }
 
 // ============================================================
-// DATABASE — full question bank
+// NAV HELPERS
+// ============================================================
+function hideAllPanels() {
+  ['auth-panel', 'player-dashboard', 'quiz', 'result', 'history-panel', 'ranking'].forEach(id => {
+    document.getElementById(id).classList.add('hidden');
+  });
+}
+function goBack() {
+  soundClick(); stopBgMusic();
+  goToDashboard();
+}
+
+// ============================================================
+// DATABASE
 // ============================================================
 const database = {
   javascript: {
     level1: [
-      {q:"Which keyword declares a constant?",                  choices:["var","let","const","define"],                        a:"const"},
-      {q:"Inside which HTML element do we put JavaScript?",     choices:["<js>","<scripting>","<script>","<javascript>"],      a:"<script>"},
-      {q:"How do you write a comment in JavaScript?",           choices:["// comment","<!-- comment -->","# comment","** comment"], a:"// comment"},
-      {q:"What does 'typeof' return for a number?",             choices:["'number'","'integer'","'float'","'num'"],            a:"'number'"},
-      {q:"Which symbol is used for strict equality?",           choices:["==","!=","===","="],                                 a:"==="},
-      {q:"How do you declare a variable in modern JS?",         choices:["var","let","dim","variable"],                       a:"let"},
-      {q:"What is the output of typeof null?",                  choices:["'null'","'object'","'undefined'","'void'"],         a:"'object'"},
-      {q:"Which method converts a string to uppercase?",        choices:["toUpperCase()","uppercase()","toUpper()","upper()"],a:"toUpperCase()"},
-      {q:"How do you write 'Hello' to the console?",            choices:["console.log('Hello')","print('Hello')","log('Hello')","echo('Hello')"], a:"console.log('Hello')"},
-      {q:"What does NaN stand for?",                            choices:["Not a Number","Null and None","Not any Notation","No assigned Name"], a:"Not a Number"},
-      {q:"Which operator is used for exponentiation?",          choices:["^","**","^^","exp()"],                              a:"**"},
-      {q:"What is the correct way to write an array?",          choices:["var a=(1,2,3)","var a=[1,2,3]","var a={1,2,3}","var a=<1,2,3>"], a:"var a=[1,2,3]"},
-      {q:"How do you get the length of a string?",              choices:[".length",".size()",".count()",".len()"],            a:".length"},
-      {q:"Which method removes the last element of an array?",  choices:["pop()","push()","shift()","splice()"],              a:"pop()"},
-      {q:"What does 'undefined' mean in JS?",                   choices:["Variable declared but not assigned","Variable is null","Variable is zero","Variable is empty string"], a:"Variable declared but not assigned"},
-      {q:"How do you create a function?",                       choices:["function myFunc(){}","func myFunc(){}","def myFunc():","create myFunc(){}"], a:"function myFunc(){}"},
-      {q:"Which method adds an element to end of an array?",    choices:["push()","pop()","append()","add()"],                a:"push()"},
-      {q:"How do you round a number to nearest integer?",       choices:["Math.round()","Math.floor()","Math.ceil()","round()"], a:"Math.round()"},
-      {q:"How do you convert a string to a number?",            choices:["parseInt()","toNumber()","strToNum()","convert()"], a:"parseInt()"},
-      {q:"What is the result of '5' + 3 in JS?",                choices:["'53'","8","53","Error"],                            a:"'53'"},
+      {q:"Which keyword declares a constant?",                  a:"const"},
+      {q:"Inside which HTML element do we put JavaScript?",     a:"<script>"},
+      {q:"How do you write a comment in JavaScript?",           a:"// comment"},
+      {q:"What does 'typeof' return for a number?",             a:"'number'"},
+      {q:"Which symbol is used for strict equality?",           a:"==="},
+      {q:"How do you declare a variable in modern JS?",         a:"let"},
+      {q:"What is the output of typeof null?",                  a:"'object'"},
+      {q:"Which method converts a string to uppercase?",        a:"toUpperCase()"},
+      {q:"How do you write 'Hello' to the console?",            a:"console.log('Hello')"},
+      {q:"What does NaN stand for?",                            a:"Not a Number"},
+      {q:"Which operator is used for exponentiation?",          a:"**"},
+      {q:"What is the correct way to write an array?",          a:"var a=[1,2,3]"},
+      {q:"How do you get the length of a string?",              a:".length"},
+      {q:"Which method removes the last element of an array?",  a:"pop()"},
+      {q:"What does 'undefined' mean in JS?",                   a:"Variable declared but not assigned"},
+      {q:"How do you create a function?",                       a:"function myFunc(){}"},
+      {q:"Which method adds an element to end of an array?",    a:"push()"},
+      {q:"How do you round a number to nearest integer?",       a:"Math.round()"},
+      {q:"How do you convert a string to a number?",            a:"parseInt()"},
+      {q:"What is the result of '5' + 3 in JS?",                a:"'53'"},
     ],
     level2: [
-      {q:"What does the spread operator (...) do?",             choices:["Spreads array/object elements","Multiplies values","Creates a new scope","Joins strings"], a:"Spreads array/object elements"},
-      {q:"What is a Promise in JavaScript?",                    choices:["An async operation placeholder","A strict variable","A loop type","A class method"], a:"An async operation placeholder"},
-      {q:"Which method creates a new array by transforming each element?", choices:["map()","filter()","reduce()","forEach()"], a:"map()"},
-      {q:"What does 'async/await' do?",                         choices:["Handles async code synchronously","Creates loops","Defines classes","Imports modules"], a:"Handles async code synchronously"},
-      {q:"What is destructuring?",                              choices:["Unpacking values from arrays/objects","Deleting variables","Breaking a loop","Removing DOM elements"], a:"Unpacking values from arrays/objects"},
-      {q:"Which method filters an array based on a condition?",  choices:["filter()","map()","find()","some()"],               a:"filter()"},
-      {q:"What is the purpose of 'use strict'?",                choices:["Enforces stricter JS rules","Makes code faster","Locks variables","Disables console"], a:"Enforces stricter JS rules"},
-      {q:"What does Object.keys() return?",                     choices:["Array of property names","Array of values","Array of entries","Number of keys"], a:"Array of property names"},
-      {q:"What is a template literal?",                         choices:["String with backticks and ${}","A CSS template","An HTML template","A regular string"], a:"String with backticks and ${}"},
-      {q:"Which method reduces an array to a single value?",    choices:["reduce()","map()","filter()","flat()"],              a:"reduce()"},
-      {q:"What is 'hoisting' in JavaScript?",                   choices:["Moving declarations to the top","Lifting DOM elements","Optimizing loops","Caching variables"], a:"Moving declarations to the top"},
-      {q:"What is an arrow function?",                          choices:["Shorter function syntax with =>","A function pointer","A recursive function","An async function"], a:"Shorter function syntax with =>"},
-      {q:"What does JSON.parse() do?",                          choices:["Converts JSON string to JS object","Converts object to JSON","Validates JSON","Compresses JSON"], a:"Converts JSON string to JS object"},
-      {q:"What is event bubbling?",                             choices:["Events propagate up the DOM","Events fire multiple times","Events are cancelled","Events are delayed"], a:"Events propagate up the DOM"},
-      {q:"Which method finds the first matching element?",       choices:["find()","filter()","search()","match()"],           a:"find()"},
-      {q:"What does 'fetch()' return?",                         choices:["A Promise","A string","An object","A boolean"],     a:"A Promise"},
-      {q:"What is optional chaining (?.) for?",                 choices:["Safely access nested properties","A loop shortcut","A ternary shorthand","A null check"], a:"Safely access nested properties"},
-      {q:"What does the nullish coalescing operator (??) do?",   choices:["Returns right side if left is null/undefined","Checks equality","Chains promises","Assigns null"], a:"Returns right side if left is null/undefined"},
-      {q:"What does Array.from() do?",                          choices:["Creates array from iterable","Copies an array","Merges arrays","Sorts an array"], a:"Creates array from iterable"},
-      {q:"What does localStorage store?",                       choices:["Persistent key-value pairs","Temporary session data","Cookies","Server data"], a:"Persistent key-value pairs"},
+      {q:"What does the spread operator (...) do?",             a:"Spreads array/object elements"},
+      {q:"What is a Promise in JavaScript?",                    a:"An async operation placeholder"},
+      {q:"Which method creates a new array by transforming each element?", a:"map()"},
+      {q:"What does 'async/await' do?",                         a:"Handles async code synchronously"},
+      {q:"What is destructuring?",                              a:"Unpacking values from arrays/objects"},
+      {q:"Which method filters an array based on a condition?",  a:"filter()"},
+      {q:"What is the purpose of 'use strict'?",                a:"Enforces stricter JS rules"},
+      {q:"What does Object.keys() return?",                     a:"Array of property names"},
+      {q:"What is a template literal?",                         a:"String with backticks and ${}"},
+      {q:"Which method reduces an array to a single value?",    a:"reduce()"},
+      {q:"What is 'hoisting' in JavaScript?",                   a:"Moving declarations to the top"},
+      {q:"What is an arrow function?",                          a:"Shorter function syntax with =>"},
+      {q:"What does JSON.parse() do?",                          a:"Converts JSON string to JS object"},
+      {q:"What is event bubbling?",                             a:"Events propagate up the DOM"},
+      {q:"Which method finds the first matching element?",       a:"find()"},
+      {q:"What does 'fetch()' return?",                         a:"A Promise"},
+      {q:"What is optional chaining (?.) for?",                 a:"Safely access nested properties"},
+      {q:"What does the nullish coalescing operator (??) do?",   a:"Returns right side if left is null/undefined"},
+      {q:"What does Array.from() do?",                          a:"Creates array from iterable"},
+      {q:"What does localStorage store?",                       a:"Persistent key-value pairs"},
     ],
     level3: [
-      {q:"What is the Event Loop?",                             choices:["Mechanism handling async callbacks","A for loop type","A DOM event","A CSS animation"], a:"Mechanism handling async callbacks"},
-      {q:"What is a Proxy object?",                             choices:["Intercepts object operations","A cached object","A cloned object","A frozen object"], a:"Intercepts object operations"},
-      {q:"What does Object.freeze() do?",                       choices:["Prevents object modification","Copies an object","Seals an object","Deletes properties"], a:"Prevents object modification"},
-      {q:"What is memoization?",                                choices:["Caching function results","Memorizing variables","Looping efficiently","Storing in localStorage"], a:"Caching function results"},
-      {q:"What is the prototype chain?",                        choices:["Inheritance lookup mechanism","A CSS chain","A promise chain","A function chain"], a:"Inheritance lookup mechanism"},
-      {q:"What is a microtask?",                                choices:["High-priority async task (e.g. Promise)","A small function","A setTimeout callback","A DOM mutation"], a:"High-priority async task (e.g. Promise)"},
-      {q:"What does structuredClone() do?",                     choices:["Deep clones an object","Shallow copies","Freezes an object","Serializes to JSON"], a:"Deep clones an object"},
-      {q:"What is currying?",                                   choices:["Transforming f(a,b) into f(a)(b)","A loop pattern","A sorting method","An array method"], a:"Transforming f(a,b) into f(a)(b)"},
-      {q:"What does Symbol.iterator define?",                   choices:["Custom iteration behavior","Symbol creation","Event handling","Type checking"], a:"Custom iteration behavior"},
-      {q:"What does Reflect.apply() do?",                       choices:["Calls a function with given args","Reflects DOM","Applies styles","Mirrors an object"], a:"Calls a function with given args"},
-      {q:"What is a generator function?",                       choices:["A function that can pause and resume","A random number creator","A factory function","A class constructor"], a:"A function that can pause and resume"},
-      {q:"What is a Blob in JavaScript?",                       choices:["Binary large object","A DOM node","An array buffer","A JSON object"], a:"Binary large object"},
-      {q:"What is lazy evaluation?",                            choices:["Delaying computation until needed","Slow loops","Deferred promises","Late variable declaration"], a:"Delaying computation until needed"},
-      {q:"What does the 'in' operator check?",                  choices:["If property exists in object","If value is in array","If string contains substring","If variable is defined"], a:"If property exists in object"},
-      {q:"What is a WeakRef?",                                  choices:["Weak reference to an object","A weak variable","A ref hook","A null reference"], a:"Weak reference to an object"},
+      {q:"What is the Event Loop?",                             a:"Mechanism handling async callbacks"},
+      {q:"What is a Proxy object?",                             a:"Intercepts object operations"},
+      {q:"What does Object.freeze() do?",                       a:"Prevents object modification"},
+      {q:"What is memoization?",                                a:"Caching function results"},
+      {q:"What is the prototype chain?",                        a:"Inheritance lookup mechanism"},
+      {q:"What is a microtask?",                                a:"High-priority async task (e.g. Promise)"},
+      {q:"What does structuredClone() do?",                     a:"Deep clones an object"},
+      {q:"What is currying?",                                   a:"Transforming f(a,b) into f(a)(b)"},
+      {q:"What does Symbol.iterator define?",                   a:"Custom iteration behavior"},
+      {q:"What does Reflect.apply() do?",                       a:"Calls a function with given args"},
+      {q:"What is a generator function?",                       a:"A function that can pause and resume"},
+      {q:"What is a Blob in JavaScript?",                       a:"Binary large object"},
+      {q:"What is lazy evaluation?",                            a:"Delaying computation until needed"},
+      {q:"What does the 'in' operator check?",                  a:"If property exists in object"},
+      {q:"What is a WeakRef?",                                  a:"Weak reference to an object"},
     ],
     level4: [
-      {q:"What is a Service Worker?",                           choices:["Script running in background for PWA","A web worker thread","A server-side script","A DOM listener"], a:"Script running in background for PWA"},
-      {q:"What is the Virtual DOM?",                            choices:["In-memory DOM representation","A hidden DOM","A faster DOM","A shadow DOM"], a:"In-memory DOM representation"},
-      {q:"What does WebAssembly enable?",                       choices:["Running compiled code in browser","Web animations","Assembly-like CSS","Binary HTML"], a:"Running compiled code in browser"},
-      {q:"What is tree shaking?",                               choices:["Removing unused code at build time","A DOM traversal","A garbage collection","A sorting algorithm"], a:"Removing unused code at build time"},
-      {q:"What is code splitting?",                             choices:["Loading JS in chunks on demand","Splitting strings","Dividing functions","Breaking loops"], a:"Loading JS in chunks on demand"},
-      {q:"What does Intersection Observer do?",                 choices:["Detects element visibility","Observes mutations","Tracks performance","Monitors network"], a:"Detects element visibility"},
-      {q:"What does requestAnimationFrame do?",                 choices:["Schedules animation before next repaint","Creates CSS animations","Requests GPU resources","Delays a function"], a:"Schedules animation before next repaint"},
-      {q:"What does top-level await enable?",                   choices:["await outside async functions in modules","Global async","Top-level promises","Awaiting DOM"], a:"await outside async functions in modules"},
-      {q:"What is the Observer pattern?",                       choices:["Notifying dependents of state changes","Watching DOM changes","A MutationObserver","An event listener"], a:"Notifying dependents of state changes"},
-      {q:"What is a BroadcastChannel?",                         choices:["Messaging between browsing contexts","A web socket","A server channel","A stream channel"], a:"Messaging between browsing contexts"},
-      {q:"What is module federation?",                          choices:["Sharing modules across apps at runtime","Federating imports","Bundling modules","Splitting modules"], a:"Sharing modules across apps at runtime"},
-      {q:"What is declarative shadow DOM?",                     choices:["Server-rendered shadow DOM","A React pattern","A CSS feature","A DOM template"], a:"Server-rendered shadow DOM"},
+      {q:"What is a Service Worker?",                           a:"Script running in background for PWA"},
+      {q:"What is the Virtual DOM?",                            a:"In-memory DOM representation"},
+      {q:"What does WebAssembly enable?",                       a:"Running compiled code in browser"},
+      {q:"What is tree shaking?",                               a:"Removing unused code at build time"},
+      {q:"What is code splitting?",                             a:"Loading JS in chunks on demand"},
+      {q:"What does Intersection Observer do?",                 a:"Detects element visibility"},
+      {q:"What does requestAnimationFrame do?",                 a:"Schedules animation before next repaint"},
+      {q:"What does top-level await enable?",                   a:"await outside async functions in modules"},
+      {q:"What is the Observer pattern?",                       a:"Notifying dependents of state changes"},
+      {q:"What is a BroadcastChannel?",                         a:"Messaging between browsing contexts"},
+      {q:"What is module federation?",                          a:"Sharing modules across apps at runtime"},
+      {q:"What is declarative shadow DOM?",                     a:"Server-rendered shadow DOM"},
     ],
     level5: [
-      {q:"What is the difference between microtasks and macrotasks?", choices:["Microtasks run before macrotasks after each task","Macrotasks run first","They run simultaneously","They are the same"], a:"Microtasks run before macrotasks after each task"},
-      {q:"What is temporal dead zone (TDZ)?",                   choices:["Period before let/const initialization","A deleted variable","A null zone","A frozen scope"], a:"Period before let/const initialization"},
-      {q:"How does V8's JIT compilation work?",                 choices:["Compiles hot code paths to machine code","Interprets JS directly","Transpiles to bytecode only","Compiles all code upfront"], a:"Compiles hot code paths to machine code"},
-      {q:"What is a monad in functional JS?",                   choices:["A design pattern for chaining computations","A loop abstraction","A type system","A class pattern"], a:"A design pattern for chaining computations"},
-      {q:"What is trampolining in JS?",                         choices:["Replacing recursion with iteration to avoid stack overflow","A DOM technique","An animation trick","A caching pattern"], a:"Replacing recursion with iteration to avoid stack overflow"},
-      {q:"What is referential transparency?",                   choices:["Same input always produces same output","Transparent references","Immutable variables","Pure imports"], a:"Same input always produces same output"},
-      {q:"What is isomorphic JavaScript?",                      choices:["Code that runs on both server and client","Platform-independent JS","Universal imports","Cross-browser JS"], a:"Code that runs on both server and client"},
-      {q:"What is algebraic effect handling?",                  choices:["Managing side effects with resumable handlers","Algebraic math in JS","Type-level effects","Effect decorators"], a:"Managing side effects with resumable handlers"},
-      {q:"What is point-free style?",                           choices:["Defining functions without naming arguments","No dot notation","Arrow functions only","No return statements"], a:"Defining functions without naming arguments"},
-      {q:"What does 'Functor' mean in JS?",                     choices:["An object with a mappable interface","A factory function","A functional component","A constructor"], a:"An object with a mappable interface"},
-      {q:"What is a lens in functional programming?",           choices:["A composable getter/setter for nested data","A view abstraction","A data pipe","A selector"], a:"A composable getter/setter for nested data"},
-      {q:"What is deoptimization in V8?",                       choices:["Falling back from compiled to interpreted code","A CSS operation","A failed import","A GC event"], a:"Falling back from compiled to interpreted code"},
+      {q:"What is the difference between microtasks and macrotasks?", a:"Microtasks run before macrotasks after each task"},
+      {q:"What is temporal dead zone (TDZ)?",                   a:"Period before let/const initialization"},
+      {q:"How does V8's JIT compilation work?",                 a:"Compiles hot code paths to machine code"},
+      {q:"What is a monad in functional JS?",                   a:"A design pattern for chaining computations"},
+      {q:"What is trampolining in JS?",                         a:"Replacing recursion with iteration to avoid stack overflow"},
+      {q:"What is referential transparency?",                   a:"Same input always produces same output"},
+      {q:"What is isomorphic JavaScript?",                      a:"Code that runs on both server and client"},
+      {q:"What is algebraic effect handling?",                  a:"Managing side effects with resumable handlers"},
+      {q:"What is point-free style?",                           a:"Defining functions without naming arguments"},
+      {q:"What does 'Functor' mean in JS?",                     a:"An object with a mappable interface"},
+      {q:"What is a lens in functional programming?",           a:"A composable getter/setter for nested data"},
+      {q:"What is deoptimization in V8?",                       a:"Falling back from compiled to interpreted code"},
     ],
   },
   python: {
     level1: [
-      {q:"How do you print 'Hello World' in Python?",           choices:["print('Hello World')","echo('Hello World')","console.log('Hello World')","printf('Hello World')"], a:"print('Hello World')"},
-      {q:"Which keyword creates a function in Python?",         choices:["function","def","func","create"],                   a:"def"},
-      {q:"How do you write a single-line comment in Python?",   choices:["// comment","# comment","/* comment */","-- comment"], a:"# comment"},
-      {q:"What is the correct file extension for Python files?", choices:[".py",".pt",".python",".pyt"],                     a:".py"},
-      {q:"How do you create a list in Python?",                 choices:["list=(1,2,3)","list=[1,2,3]","list={1,2,3}","list=<1,2,3>"], a:"list=[1,2,3]"},
-      {q:"What does len() do?",                                 choices:["Returns length of object","Loops through object","Creates a list","Converts to integer"], a:"Returns length of object"},
-      {q:"How do you start an if statement in Python?",         choices:["if x == 1:","if (x == 1)","if x == 1 then","if x == 1 {"], a:"if x == 1:"},
-      {q:"What is the output of type(42)?",                     choices:["<class 'int'>","<class 'float'>","<class 'str'>","<class 'num'>"], a:"<class 'int'>"},
-      {q:"How do you create a variable in Python?",             choices:["var x=5","int x=5","x=5","let x=5"],               a:"x=5"},
-      {q:"Which operator is used for integer division?",        choices:["//","/","÷","%"],                                   a:"//"},
-      {q:"What does 'not' do in Python?",                       choices:["Logical negation","Checks inequality","Removes element","Stops loop"], a:"Logical negation"},
-      {q:"What does range(5) generate?",                        choices:["0 to 4","1 to 5","0 to 5","1 to 4"],               a:"0 to 4"},
-      {q:"What is a tuple?",                                    choices:["An immutable sequence","A mutable list","A dictionary","A set"], a:"An immutable sequence"},
-      {q:"What does input() do?",                               choices:["Takes user input as string","Reads a file","Imports a module","Creates input field"], a:"Takes user input as string"},
-      {q:"What does append() do to a list?",                    choices:["Adds element to end","Removes element","Sorts list","Copies list"], a:"Adds element to end"},
-      {q:"How do you create a dictionary?",                     choices:["{'key':'value'}","['key','value']","('key','value')","<key:value>"], a:"{'key':'value'}"},
-      {q:"How do you import a module?",                         choices:["import module","include module","require module","using module"], a:"import module"},
-      {q:"What does the 'pass' statement do?",                  choices:["Does nothing, placeholder","Passes a value","Skips a loop","Returns None"], a:"Does nothing, placeholder"},
-      {q:"What is None in Python?",                             choices:["Absence of value","Zero","Empty string","False"],   a:"Absence of value"},
-      {q:"How do you repeat a string 3 times?",                 choices:["str * 3","str + 3","str ** 3","repeat(str,3)"],    a:"str * 3"},
+      {q:"How do you print 'Hello World' in Python?",           a:"print('Hello World')"},
+      {q:"Which keyword creates a function in Python?",         a:"def"},
+      {q:"How do you write a single-line comment in Python?",   a:"# comment"},
+      {q:"What is the correct file extension for Python files?", a:".py"},
+      {q:"How do you create a list in Python?",                 a:"list=[1,2,3]"},
+      {q:"What does len() do?",                                 a:"Returns length of object"},
+      {q:"How do you start an if statement in Python?",         a:"if x == 1:"},
+      {q:"What is the output of type(42)?",                     a:"<class 'int'>"},
+      {q:"How do you create a variable in Python?",             a:"x=5"},
+      {q:"Which operator is used for integer division?",        a:"//"},
+      {q:"What does 'not' do in Python?",                       a:"Logical negation"},
+      {q:"What does range(5) generate?",                        a:"0 to 4"},
+      {q:"What is a tuple?",                                    a:"An immutable sequence"},
+      {q:"What does input() do?",                               a:"Takes user input as string"},
+      {q:"What does append() do to a list?",                    a:"Adds element to end"},
+      {q:"How do you create a dictionary?",                     a:"{'key':'value'}"},
+      {q:"How do you import a module?",                         a:"import module"},
+      {q:"What does the 'pass' statement do?",                  a:"Does nothing, placeholder"},
+      {q:"What is None in Python?",                             a:"Absence of value"},
+      {q:"How do you repeat a string 3 times?",                 a:"str * 3"},
     ],
     level2: [
-      {q:"What is a list comprehension?",                       choices:["Compact way to create lists","A loop","A filter function","A sorted list"], a:"Compact way to create lists"},
-      {q:"What does *args allow?",                              choices:["Variable positional arguments","Pointer args","Required args","Array args"], a:"Variable positional arguments"},
-      {q:"What is a lambda function?",                          choices:["Anonymous one-line function","A named function","A recursive function","A class method"], a:"Anonymous one-line function"},
-      {q:"What does map() do?",                                 choices:["Applies function to each iterable item","Creates a map","Loops through a list","Returns a dictionary"], a:"Applies function to each iterable item"},
-      {q:"What is the difference between a list and a tuple?",  choices:["Lists are mutable, tuples are immutable","Lists are faster","Tuples can be sorted","No difference"], a:"Lists are mutable, tuples are immutable"},
-      {q:"What does zip() do?",                                 choices:["Combines multiple iterables","Compresses files","Joins strings","Creates a set"], a:"Combines multiple iterables"},
-      {q:"What is a generator?",                                choices:["Lazy iterator yielding values","A factory function","A class constructor","A comprehension"], a:"Lazy iterator yielding values"},
-      {q:"What does enumerate() do?",                           choices:["Adds index to iterable","Counts items","Numbers a list","Creates tuples"], a:"Adds index to iterable"},
-      {q:"What is the purpose of 'with' statement?",            choices:["Context manager for resource handling","A condition","A loop","An import statement"], a:"Context manager for resource handling"},
-      {q:"What is string formatting with f-strings?",           choices:["f'Hello {name}' syntax","format() method","% formatting","Template strings"], a:"f'Hello {name}' syntax"},
-      {q:"What does filter() do?",                              choices:["Filters items by function condition","Removes all items","Sorts items","Maps items"], a:"Filters items by function condition"},
-      {q:"What is a set in Python?",                            choices:["Unordered collection of unique items","An ordered list","A frozen tuple","A dictionary without values"], a:"Unordered collection of unique items"},
-      {q:"What does sorted() return?",                          choices:["A new sorted list","Sorts in place","A sorted iterator","A tuple"], a:"A new sorted list"},
-      {q:"What does try/except do?",                            choices:["Handles exceptions","Tries a loop","Tests conditions","Imports safely"], a:"Handles exceptions"},
-      {q:"What does __init__ do?",                              choices:["Initializes a class instance","Imports a module","Creates a list","Defines a module"], a:"Initializes a class instance"},
-      {q:"What does super() do?",                               choices:["Calls parent class method","Creates superclass","Deletes parent","Copies parent"], a:"Calls parent class method"},
-      {q:"What is a decorator?",                                choices:["A function wrapping another function","A class attribute","A CSS-like modifier","A template"], a:"A function wrapping another function"},
-      {q:"What does list.sort() do?",                           choices:["Sorts list in place","Returns sorted list","Creates new list","Reverses list"], a:"Sorts list in place"},
-      {q:"What is slicing in Python?",                          choices:["Extracting a portion of a sequence","Splitting a string","Removing items","Copying a list"], a:"Extracting a portion of a sequence"},
-      {q:"What does 'yield' do in a generator?",                choices:["Pauses and returns a value","Returns and exits","Yields to another thread","Skips iteration"], a:"Pauses and returns a value"},
+      {q:"What is a list comprehension?",                       a:"Compact way to create lists"},
+      {q:"What does *args allow?",                              a:"Variable positional arguments"},
+      {q:"What is a lambda function?",                          a:"Anonymous one-line function"},
+      {q:"What does map() do?",                                 a:"Applies function to each iterable item"},
+      {q:"What is the difference between a list and a tuple?",  a:"Lists are mutable, tuples are immutable"},
+      {q:"What does zip() do?",                                 a:"Combines multiple iterables"},
+      {q:"What is a generator?",                                a:"Lazy iterator yielding values"},
+      {q:"What does enumerate() do?",                           a:"Adds index to iterable"},
+      {q:"What is the purpose of 'with' statement?",            a:"Context manager for resource handling"},
+      {q:"What is string formatting with f-strings?",           a:"f'Hello {name}' syntax"},
+      {q:"What does filter() do?",                              a:"Filters items by function condition"},
+      {q:"What is a set in Python?",                            a:"Unordered collection of unique items"},
+      {q:"What does sorted() return?",                          a:"A new sorted list"},
+      {q:"What does try/except do?",                            a:"Handles exceptions"},
+      {q:"What does __init__ do?",                              a:"Initializes a class instance"},
+      {q:"What does super() do?",                               a:"Calls parent class method"},
+      {q:"What is a decorator?",                                a:"A function wrapping another function"},
+      {q:"What does list.sort() do?",                           a:"Sorts list in place"},
+      {q:"What is slicing in Python?",                          a:"Extracting a portion of a sequence"},
+      {q:"What does 'yield' do in a generator?",                a:"Pauses and returns a value"},
     ],
     level3: [
-      {q:"What is a metaclass?",                                choices:["A class that creates classes","A base class","An abstract class","A class decorator"], a:"A class that creates classes"},
-      {q:"What is the GIL?",                                    choices:["Global Interpreter Lock limiting threads","A global variable","A garbage collector","A loop limiter"], a:"Global Interpreter Lock limiting threads"},
-      {q:"What is a descriptor?",                               choices:["Object defining __get__, __set__, __delete__","A function annotation","A docstring","A method decorator"], a:"Object defining __get__, __set__, __delete__"},
-      {q:"What is monkey patching?",                            choices:["Modifying code at runtime","A debugging technique","A testing pattern","A refactoring method"], a:"Modifying code at runtime"},
-      {q:"What does functools.lru_cache do?",                   choices:["Caches function results","Loops with cache","Creates cached lists","Runs functions lazily"], a:"Caches function results"},
-      {q:"What is a coroutine?",                                choices:["A function that can suspend execution","A co-process","A thread","A generator"], a:"A function that can suspend execution"},
-      {q:"What does asyncio.gather() do?",                      choices:["Runs multiple coroutines concurrently","Gathers data","Joins threads","Collects results"], a:"Runs multiple coroutines concurrently"},
-      {q:"What is a data class?",                               choices:["A class auto-generating boilerplate","A class holding data only","A database model","A NamedTuple"], a:"A class auto-generating boilerplate"},
-      {q:"What does copy.deepcopy do?",                         choices:["Creates a fully independent copy","Copies references","Clones a class","Copies module"], a:"Creates a fully independent copy"},
-      {q:"What does __repr__ do?",                              choices:["Returns developer-friendly string","Represents as number","Creates repr object","Defines print behavior"], a:"Returns developer-friendly string"},
-      {q:"What does __slots__ do?",                             choices:["Restricts instance attributes","Creates slots in GUI","Locks class attributes","Defines class methods"], a:"Restricts instance attributes"},
-      {q:"What does __new__ do?",                               choices:["Creates a new instance","Initializes instance","Creates a class","Copies an object"], a:"Creates a new instance"},
-      {q:"What does itertools.chain() do?",                     choices:["Chains multiple iterables","Chains functions","Creates a linked list","Connects generators"], a:"Chains multiple iterables"},
-      {q:"What does __call__ enable?",                          choices:["Makes an instance callable","Calls a method","Creates a call stack","Invokes a decorator"], a:"Makes an instance callable"},
-      {q:"What is the purpose of the typing module?",           choices:["Type hints and annotations","Runtime type checking","Type conversion","Static typing"], a:"Type hints and annotations"},
+      {q:"What is a metaclass?",                                a:"A class that creates classes"},
+      {q:"What is the GIL?",                                    a:"Global Interpreter Lock limiting threads"},
+      {q:"What is a descriptor?",                               a:"Object defining __get__, __set__, __delete__"},
+      {q:"What is monkey patching?",                            a:"Modifying code at runtime"},
+      {q:"What does functools.lru_cache do?",                   a:"Caches function results"},
+      {q:"What is a coroutine?",                                a:"A function that can suspend execution"},
+      {q:"What does asyncio.gather() do?",                      a:"Runs multiple coroutines concurrently"},
+      {q:"What is a data class?",                               a:"A class auto-generating boilerplate"},
+      {q:"What does copy.deepcopy do?",                         a:"Creates a fully independent copy"},
+      {q:"What does __repr__ do?",                              a:"Returns developer-friendly string"},
+      {q:"What does __slots__ do?",                             a:"Restricts instance attributes"},
+      {q:"What does __new__ do?",                               a:"Creates a new instance"},
+      {q:"What does itertools.chain() do?",                     a:"Chains multiple iterables"},
+      {q:"What does __call__ enable?",                          a:"Makes an instance callable"},
+      {q:"What is the purpose of the typing module?",           a:"Type hints and annotations"},
     ],
     level4: [
-      {q:"What is CPython?",                                    choices:["Reference implementation of Python in C","A Python compiler","A Python optimizer","A Python IDE"], a:"Reference implementation of Python in C"},
-      {q:"What is PyPy?",                                       choices:["Python implementation with JIT compiler","A Python package","A testing framework","A Python IDE"], a:"Python implementation with JIT compiler"},
-      {q:"What does __mro__ represent?",                        choices:["Method Resolution Order","Module run order","Method registry","Memory reference order"], a:"Method Resolution Order"},
-      {q:"What does ctypes allow?",                             choices:["Calling C libraries from Python","C-type variables","Compiled types","C-extension types"], a:"Calling C libraries from Python"},
-      {q:"What does multiprocessing.Pool do?",                  choices:["Manages worker process pool","Creates threads","Pools memory","Manages coroutines"], a:"Manages worker process pool"},
-      {q:"What does pickle module do?",                         choices:["Serializes Python objects","Pickles data types","Compresses data","Encrypts objects"], a:"Serializes Python objects"},
-      {q:"What does dis module do?",                            choices:["Disassembles Python bytecode","Displays objects","Disconnects imports","Distributes tasks"], a:"Disassembles Python bytecode"},
-      {q:"What does ast module provide?",                       choices:["Abstract Syntax Tree manipulation","Assembly tools","Attribute scanning","Async task tools"], a:"Abstract Syntax Tree manipulation"},
-      {q:"What does heapq module provide?",                     choices:["Heap queue algorithm","Hash queue","Heavy queue","Header queue"], a:"Heap queue algorithm"},
-      {q:"What is a NamedTuple?",                               choices:["Tuple with named fields","A named list","A typed dict","A labeled set"], a:"Tuple with named fields"},
-      {q:"What is a semaphore in threading?",                   choices:["Controls access with a counter","A signal type","A mutex lock","A thread pool"], a:"Controls access with a counter"},
-      {q:"What is __hash__ used for?",                          choices:["Returns integer hash for use in dicts/sets","Hashes a string","Creates hash map","Validates equality"], a:"Returns integer hash for use in dicts/sets"},
+      {q:"What is CPython?",                                    a:"Reference implementation of Python in C"},
+      {q:"What is PyPy?",                                       a:"Python implementation with JIT compiler"},
+      {q:"What does __mro__ represent?",                        a:"Method Resolution Order"},
+      {q:"What does ctypes allow?",                             a:"Calling C libraries from Python"},
+      {q:"What does multiprocessing.Pool do?",                  a:"Manages worker process pool"},
+      {q:"What does pickle module do?",                         a:"Serializes Python objects"},
+      {q:"What does dis module do?",                            a:"Disassembles Python bytecode"},
+      {q:"What does ast module provide?",                       a:"Abstract Syntax Tree manipulation"},
+      {q:"What does heapq module provide?",                     a:"Heap queue algorithm"},
+      {q:"What is a NamedTuple?",                               a:"Tuple with named fields"},
+      {q:"What is a semaphore in threading?",                   a:"Controls access with a counter"},
+      {q:"What does __hash__ used for?",                        a:"Returns integer hash for use in dicts/sets"},
     ],
     level5: [
-      {q:"What is the difference between concurrency and parallelism?", choices:["Concurrency manages multiple tasks, parallelism runs them simultaneously","They are the same","Parallelism is single-threaded","Concurrency uses multiple CPUs"], a:"Concurrency manages multiple tasks, parallelism runs them simultaneously"},
-      {q:"What does the walrus operator := do?",                choices:["Assigns and returns value in expression","Walrus pattern match","Assigns a variable","Compares values"], a:"Assigns and returns value in expression"},
-      {q:"What is structural pattern matching?",                choices:["Match/case statement matching data shapes","A regex pattern","A class structure","An import pattern"], a:"Match/case statement matching data shapes"},
-      {q:"What is a TypeVarTuple?",                             choices:["A variadic generic type parameter","A tuple type variable","A type for tuples","A list of TypeVars"], a:"A variadic generic type parameter"},
-      {q:"What does ParamSpec capture?",                        choices:["Captures function parameter types for higher-order functions","Parameter specifications","A function spec","Call signatures"], a:"Captures function parameter types for higher-order functions"},
-      {q:"What is free threading in Python 3.13?",              choices:["Experimental GIL-free mode","Free thread creation","Lightweight threads","Thread pooling"], a:"Experimental GIL-free mode"},
-      {q:"What is an Annotated type?",                          choices:["Type with attached metadata","An annotated variable","A commented type","A documented type"], a:"Type with attached metadata"},
-      {q:"What is a memory view in Python?",                    choices:["A buffer protocol object accessing memory directly","A memory snapshot","A view of variables","A memory log"], a:"A buffer protocol object accessing memory directly"},
-      {q:"What is ExceptionGroup?",                             choices:["Groups multiple exceptions together","A list of exceptions","An exception handler","A multi-catch block"], a:"Groups multiple exceptions together"},
-      {q:"What is type narrowing in Python?",                   choices:["Refining a type within a conditional branch","Casting a type","Removing type hints","Strict typing"], a:"Refining a type within a conditional branch"},
+      {q:"What is the difference between concurrency and parallelism?", a:"Concurrency manages multiple tasks, parallelism runs them simultaneously"},
+      {q:"What does the walrus operator := do?",                a:"Assigns and returns value in expression"},
+      {q:"What is structural pattern matching?",                a:"Match/case statement matching data shapes"},
+      {q:"What is a TypeVarTuple?",                             a:"A variadic generic type parameter"},
+      {q:"What does ParamSpec capture?",                        a:"Captures function parameter types for higher-order functions"},
+      {q:"What is free threading in Python 3.13?",              a:"Experimental GIL-free mode"},
+      {q:"What is an Annotated type?",                          a:"Type with attached metadata"},
+      {q:"What is a memory view in Python?",                    a:"A buffer protocol object accessing memory directly"},
+      {q:"What is ExceptionGroup?",                             a:"Groups multiple exceptions together"},
+      {q:"What is type narrowing in Python?",                   a:"Refining a type within a conditional branch"},
     ],
-  }
+  },
 };

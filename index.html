@@ -3,174 +3,245 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DevQuiz</title>
+<title>Fouroflife</title>
 <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/1828/1828884.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div class="noise-overlay"></div>
+<div class="grid-bg"></div>
 
-<div class="bg-particles" id="bg-particles"></div>
-<div class="bg-vignette"></div>
-
+<!-- HEADER -->
 <header class="site-header">
-  <div class="header-ornament left">❖</div>
-  <h1 class="title">
-    <span class="title-dev">Dev</span><span class="title-quiz">Quiz</span>
-    <span class="title-sub">Four of lifes</span>
-  </h1>
-  <div class="header-ornament right">❖</div>
+  <div class="logo">
+    <span class="logo-bracket">{</span>
+    <span class="logo-dev">FOUROF</span><span class="logo-quiz">LIFE</span>
+    <span class="logo-bracket">}</span>
+  </div>
+  <div class="header-tagline">FLIP · LEARN · UNDERSTAND</div>
 </header>
 
-<!-- PLAYER LOGIN -->
-<div id="player-login" class="panel login-box">
-  <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
-  <div class="panel-corner bl"></div><div class="panel-corner br"></div>
-  <h2>Enter the Arena</h2>
-  <input type="text" id="username" placeholder="Your name...">
-  <select id="category">
-    <option value="javascript">⚡ JavaScript</option>
-    <option value="python">🐍 Python</option>
-  </select>
+<!-- AUTH PANEL -->
+<div id="auth-panel" class="panel">
+  <div class="panel-glow"></div>
+  <div class="auth-tabs">
+    <button class="auth-tab active" onclick="switchTab('login')">Sign In</button>
+    <button class="auth-tab" onclick="switchTab('register')">Register</button>
+  </div>
 
-  <div class="difficulty-section">
-    <h3>Choose Difficulty</h3>
-    <div class="difficulty-grid">
-      <label class="diff-card" data-diff="beginner">
-        <input type="radio" name="difficulty" value="beginner">
-        <span class="diff-icon">🌿</span>
-        <span class="diff-name">Beginner</span>
-        <span class="diff-desc">Levels 1–2</span>
-      </label>
-      <label class="diff-card" data-diff="normal">
-        <input type="radio" name="difficulty" value="normal" checked>
-        <span class="diff-icon">⚔️</span>
-        <span class="diff-name">Normal</span>
-        <span class="diff-desc">Levels 1–3</span>
-      </label>
-      <label class="diff-card" data-diff="expert">
-        <input type="radio" name="difficulty" value="expert">
-        <span class="diff-icon">💀</span>
-        <span class="diff-name">Expert</span>
-        <span class="diff-desc">Levels 1–5</span>
-      </label>
+  <!-- LOGIN FORM -->
+  <div id="login-form">
+    <div class="form-group">
+      <label class="form-label">Username</label>
+      <input type="text" id="login-username" placeholder="Enter username...">
     </div>
-  </div>
-
-  <h3>Choose Your Seal</h3>
-  <div id="avatars">
-    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=alpha&backgroundColor=b6e3f4" class="avatar" alt="Avatar 1">
-    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=beta&backgroundColor=c0aede" class="avatar" alt="Avatar 2">
-    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=gamma&backgroundColor=d1d4f9" class="avatar" alt="Avatar 3">
-    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=delta&backgroundColor=ffd5dc" class="avatar" alt="Avatar 4">
-    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=epsilon&backgroundColor=c0e0c0" class="avatar" alt="Avatar 5">
-  </div>
-  <button onclick="loginPlayer()" class="btn-primary">⚜ Begin Your Trial</button>
-</div>
-
-<!-- PLAYER DASHBOARD -->
-<div id="player-dashboard" class="panel hidden">
-  <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
-  <div class="panel-corner bl"></div><div class="panel-corner br"></div>
-  <div class="dashboard-header">
-    <img id="dashboard-avatar" src="" class="dashboard-avatar">
-    <div class="dashboard-info">
-      <div id="dashboard-name" class="player-name"></div>
-      <div id="dashboard-score" class="player-score">⚜ Score: 0</div>
-      <div id="dashboard-level" class="player-level">Rank I</div>
-      <div id="dashboard-diff" class="player-diff"></div>
-    </div>
-  </div>
-  <div class="dash-buttons">
-    <button onclick="startQuiz()" class="btn-primary">⚔ Enter Trial</button>
-    <button onclick="showRanking()" class="btn-secondary">📜 Hall of Legends</button>
-    <button onclick="logoutPlayer()" class="btn-ghost">↩ Back</button>
-  </div>
-  <div class="level-bar-container">
-    <div class="level-labels" id="level-labels"></div>
-    <div class="level-track">
-      <div class="level-fill" id="level-fill"></div>
-      <div class="level-fill-glow" id="level-fill-glow"></div>
-    </div>
-  </div>
-</div>
-
-<!-- QUIZ -->
-<div id="quiz" class="panel hidden">
-  <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
-  <div class="panel-corner bl"></div><div class="panel-corner br"></div>
-  <div class="quiz-header">
-    <button onclick="goBack()" class="btn-ghost small">↩ Back</button>
-    <img id="player-avatar" src="" class="quiz-avatar">
-    <div id="level-tag" class="level-tag"></div>
-  </div>
-
-  <div class="question-card">
-    <div class="qcard-inner">
-      <span class="q-number" id="q-number"></span>
-      <h2 id="question"></h2>
-    </div>
-  </div>
-
-  <!-- ALWAYS-VISIBLE FLIP CARD -->
-  <div class="flip-card-arena">
-    <div class="flip-card" id="flip-card">
-      <div class="flip-inner" id="flip-inner">
-
-        <!-- FRONT: Choices -->
-        <div class="flip-front" id="flip-front">
-          <div class="flip-front-label">⚔ Choose your answer</div>
-          <div id="choices" class="choices-grid"></div>
-        </div>
-
-        <!-- BACK: Result -->
-        <div class="flip-back" id="flip-back">
-          <div class="back-result-icon" id="back-result-icon"></div>
-          <div class="back-result-text" id="back-result-text"></div>
-          <div class="back-your-wrap">
-            <span class="back-label">Your Answer</span>
-            <span class="back-your" id="back-your"></span>
-          </div>
-          <div class="back-divider">
-            <span class="back-divider-line"></span>
-            <span class="back-divider-icon">✦</span>
-            <span class="back-divider-line"></span>
-          </div>
-          <div class="back-correct-wrap">
-            <span class="back-label">Correct Answer</span>
-            <span class="back-correct" id="back-correct"></span>
-          </div>
-          <button class="btn-next-rune" id="btn-next" onclick="nextQuestion(event)">Next ▶</button>
-        </div>
-
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <div class="password-wrap">
+        <input type="password" id="login-password" placeholder="Enter password...">
+        <button class="toggle-pw" onclick="togglePw('login-password', this)">👁</button>
       </div>
     </div>
-    <div class="flip-hint" id="flip-hint">Select an answer to reveal the rune</div>
+    <div id="login-error" class="form-error hidden"></div>
+    <button onclick="loginPlayer()" class="btn-primary">→ Sign In</button>
+  </div>
+
+  <!-- REGISTER FORM -->
+  <div id="register-form" class="hidden">
+    <div class="form-group">
+      <label class="form-label">Choose Avatar</label>
+      <div id="reg-avatars" class="avatars-row">
+        <!-- Row 1: 5 avatars -->
+        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=alpha&backgroundColor=1a2e1a"   class="avatar" alt="A1">
+        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=beta&backgroundColor=1a2e25"    class="avatar" alt="A2">
+        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=gamma&backgroundColor=0d2010"   class="avatar" alt="A3">
+        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=delta&backgroundColor=162b1a"   class="avatar" alt="A4">
+        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=epsilon&backgroundColor=1e2e1a" class="avatar" alt="A5">
+        <!-- Row 2: 5 more avatars -->
+        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=zeta&backgroundColor=0a1f12"    class="avatar" alt="A6">
+        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=eta&backgroundColor=112518"     class="avatar" alt="A7">
+        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=theta&backgroundColor=18301e"   class="avatar" alt="A8">
+        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=iota&backgroundColor=0e2215"    class="avatar" alt="A9">
+        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=kappa&backgroundColor=152919"   class="avatar" alt="A10">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Username</label>
+      <input type="text" id="reg-username" placeholder="Pick a username...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <div class="password-wrap">
+        <input type="password" id="reg-password" placeholder="Create password...">
+        <button class="toggle-pw" onclick="togglePw('reg-password', this)">👁</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Confirm Password</label>
+      <div class="password-wrap">
+        <input type="password" id="reg-confirm" placeholder="Confirm password...">
+        <button class="toggle-pw" onclick="togglePw('reg-confirm', this)">👁</button>
+      </div>
+    </div>
+    <div id="reg-error" class="form-error hidden"></div>
+    <button onclick="registerPlayer()" class="btn-primary">→ Create Account</button>
   </div>
 </div>
 
-<!-- RESULT -->
+<!-- DASHBOARD -->
+<div id="player-dashboard" class="panel hidden">
+  <div class="panel-glow"></div>
+  <div class="dashboard-hero">
+    <img id="dash-avatar" src="" class="dash-avatar-img" alt="">
+    <div class="dash-hero-info">
+      <div id="dash-name" class="dash-name"></div>
+      <div id="dash-stats-row" class="dash-stats-row"></div>
+    </div>
+    <button onclick="logoutPlayer()" class="btn-icon-ghost" title="Logout">⏻</button>
+  </div>
+  <div class="config-section">
+    <div class="config-row">
+      <div class="config-field">
+        <label class="form-label">Category</label>
+        <select id="dash-category">
+          <option value="javascript">⚡ JavaScript</option>
+          <option value="python">🐍 Python</option>
+        </select>
+      </div>
+      <div class="config-field">
+        <label class="form-label">Difficulty</label>
+        <select id="dash-difficulty">
+          <option value="beginner">🌿 Beginner</option>
+          <option value="normal" selected>⚔️ Normal</option>
+          <option value="expert">💀 Expert</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="dash-actions">
+    <button onclick="startQuiz()" class="btn-primary">▶ Start Flashcards</button>
+    <div class="dash-secondary-row">
+      <button onclick="showRanking()" class="btn-outline">🏆 Leaderboard</button>
+      <button onclick="showHistory()" class="btn-outline">📋 My History</button>
+    </div>
+  </div>
+</div>
+
+<!-- QUIZ / FLASHCARD PANEL -->
+<div id="quiz" class="panel hidden">
+  <div class="panel-glow"></div>
+
+  <!-- Top bar -->
+  <div class="quiz-topbar">
+    <button onclick="goBack()" class="btn-icon-ghost">← Back</button>
+    <div id="quiz-progress-info" class="quiz-progress-info"></div>
+    <img id="quiz-avatar" src="" class="quiz-avatar-sm" alt="">
+  </div>
+
+  <!-- Progress bar -->
+  <div class="progress-bar-wrap">
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="progress-fill"></div>
+    </div>
+    <div class="progress-labels">
+      <span id="prog-score" class="prog-score">Score: 0</span>
+      <span id="prog-tag" class="prog-tag"></span>
+    </div>
+  </div>
+
+  <!-- Flip hint -->
+  <div class="flip-hint" id="flip-hint">
+    <span class="flip-hint-icon">↩</span> Select an answer below to reveal the card
+  </div>
+
+  <!-- THE FLASHCARD -->
+  <div class="flashcard-scene" id="flashcard-scene" onclick="flipCard()">
+    <div class="flashcard" id="flashcard">
+
+      <!-- FRONT: Question -->
+      <div class="flashcard-face flashcard-front">
+        <div class="fc-corner-label">QUESTION</div>
+        <div class="fc-meta" id="fc-meta-front"></div>
+        <div class="fc-question" id="fc-question"></div>
+        <div class="fc-tap-cue" style="display:none;">tap to flip →</div>
+      </div>
+
+      <!-- BACK: Answer + Explanation (no grade buttons — choices handle grading) -->
+      <div class="flashcard-face flashcard-back">
+        <div class="fc-corner-label answer-label">ANSWER</div>
+        <div class="fc-answer" id="fc-answer"></div>
+        <div class="fc-explanation" id="fc-explanation">
+          <div class="fc-exp-loader" id="fc-exp-loader">
+            <span class="fc-spinner"></span> Loading explanation…
+          </div>
+          <div class="fc-exp-text" id="fc-exp-text" style="display:none;"></div>
+        </div>
+        <!-- Self-grade buttons (fallback, hidden when choices used) -->
+        <div class="fc-grade-btns" id="fc-grade-btns" style="display:none;">
+          <button class="fc-btn-wrong" onclick="gradeCard(false, event)">
+            <span class="fc-btn-icon">✗</span><span>Wrong</span>
+          </button>
+          <button class="fc-btn-correct" onclick="gradeCard(true, event)">
+            <span class="fc-btn-icon">✓</span><span>Correct</span>
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /flashcard -->
+  </div><!-- /flashcard-scene -->
+
+  <!-- MULTIPLE CHOICE OPTIONS (shown below the card, always visible) -->
+  <div class="fc-choices-wrap">
+    <div class="fc-choices-label">Choose the correct answer:</div>
+    <div id="fc-choices" class="fc-choices-grid"></div>
+  </div>
+
+  <!-- Graded feedback bar (shows after grading) -->
+  <div class="grade-feedback hidden" id="grade-feedback">
+    <span id="grade-feedback-text"></span>
+    <button class="btn-next-card" id="btn-next" onclick="nextQuestion()">
+      Next Card →
+    </button>
+  </div>
+
+</div><!-- /quiz -->
+
+<!-- FINAL RESULT -->
 <div id="result" class="panel hidden">
-  <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
-  <div class="panel-corner bl"></div><div class="panel-corner br"></div>
-  <div class="result-content">
-    <div class="trophy">🏆</div>
-    <h2>Trial Complete!</h2>
-    <p id="score" class="final-score"></p>
-    <div id="result-rank" class="result-rank"></div>
-    <button onclick="showRanking()" class="btn-secondary" style="margin-bottom:10px;">📜 Hall of Legends</button>
-    <button onclick="goBack()" class="btn-primary">↩ Dashboard</button>
+  <div class="panel-glow"></div>
+  <div class="final-hero">
+    <div class="final-trophy">🏆</div>
+    <h2 class="final-title">Deck Complete!</h2>
+    <div class="final-score-display" id="final-score-display"></div>
+    <div class="final-rank-display" id="final-rank-display"></div>
+  </div>
+  <div class="final-actions">
+    <button onclick="showHistory()" class="btn-primary">📋 Review Cards</button>
+    <button onclick="showRanking()" class="btn-outline">🏆 Leaderboard</button>
+    <button onclick="goBack()" class="btn-ghost">← Dashboard</button>
   </div>
 </div>
 
-<!-- RANKING -->
+<!-- HISTORY PANEL -->
+<div id="history-panel" class="panel hidden">
+  <div class="panel-glow"></div>
+  <div class="panel-topbar">
+    <button onclick="goBack()" class="btn-icon-ghost">← Back</button>
+    <h2 class="panel-title">My History</h2>
+    <div></div>
+  </div>
+  <div id="history-list" class="history-list"></div>
+</div>
+
+<!-- RANKING PANEL -->
 <div id="ranking" class="panel hidden">
-  <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
-  <div class="panel-corner bl"></div><div class="panel-corner br"></div>
-  <div class="rank-header">
-    <button onclick="goBack()" class="btn-ghost small">↩ Back</button>
-    <h2>📜 Hall of Legends</h2>
+  <div class="panel-glow"></div>
+  <div class="panel-topbar">
+    <button onclick="goBack()" class="btn-icon-ghost">← Back</button>
+    <h2 class="panel-title">Leaderboard</h2>
+    <div></div>
   </div>
   <div id="rank-list" class="rank-list"></div>
 </div>
