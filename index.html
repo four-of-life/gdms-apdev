@@ -3,144 +3,212 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fouroflife</title>
+<title>Fouroflife · Flashcard Dojo</title>
 <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/1828/1828884.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;0,9..144,900;1,9..144,400&family=DM+Mono:wght@300;400;500&family=Anybody:wght@400;600;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="noise-overlay"></div>
-<div class="grid-bg"></div>
+
+<!-- FLOATING REVIEWER BUTTON -->
+<button id="reviewer-fab" class="reviewer-fab" onclick="openReviewer()" title="Open Reviewer">
+  <span class="fab-icon">📖</span>
+  <span class="fab-label">STUDY</span>
+</button>
+
+<!-- REVIEWER OVERLAY -->
+<div id="reviewer-overlay" class="reviewer-overlay hidden">
+  <div class="reviewer-modal">
+    <div class="reviewer-header">
+      <div class="reviewer-title-row">
+        <span class="reviewer-chip">STUDY MODE</span>
+        <button class="reviewer-close" onclick="closeReviewer()">✕</button>
+      </div>
+      <h2 class="reviewer-title">Flashcard Reviewer</h2>
+      <p class="reviewer-sub">Browse all cards before your session. Knowledge is the real cheat code.</p>
+      <div class="reviewer-controls">
+        <div class="rev-control-group">
+          <label class="rev-label">Category</label>
+          <select id="rev-category" onchange="loadReviewer()">
+            <option value="javascript">⚡ JavaScript</option>
+            <option value="python">🐍 Python</option>
+          </select>
+        </div>
+        <div class="rev-control-group">
+          <label class="rev-label">Level</label>
+          <select id="rev-level" onchange="loadReviewer()">
+            <option value="all">All Levels</option>
+            <option value="1">Level 1 – Basics</option>
+            <option value="2">Level 2 – Intermediate</option>
+            <option value="3">Level 3 – Advanced</option>
+            <option value="4">Level 4 – Expert</option>
+            <option value="5">Level 5 – Master</option>
+          </select>
+        </div>
+      </div>
+      <div class="rev-search-wrap">
+        <input type="text" id="rev-search" placeholder="Search questions…" oninput="filterReviewer()">
+        <span class="rev-search-icon">⌕</span>
+      </div>
+    </div>
+    <div id="reviewer-cards" class="reviewer-cards"></div>
+    <div class="reviewer-footer">
+      <span id="rev-count" class="rev-count">0 cards</span>
+      <button class="btn-start-from-reviewer" onclick="closeReviewer(); goToDashboard();">Ready to Play →</button>
+    </div>
+  </div>
+</div>
+
+<!-- STACKED CARD DECO (background) -->
+<div class="page-deco">
+  <div class="deco-card deco-card-1"></div>
+  <div class="deco-card deco-card-2"></div>
+  <div class="deco-card deco-card-3"></div>
+</div>
 
 <!-- HEADER -->
 <header class="site-header">
-  <div class="logo">
-    <span class="logo-bracket">{</span>
-    <span class="logo-dev">FOUROF</span><span class="logo-quiz">LIFE</span>
-    <span class="logo-bracket">}</span>
+  <div class="header-inner">
+    <div class="logo-stack">
+      <div class="logo-mark">
+        <div class="logo-card lc1"></div>
+        <div class="logo-card lc2"></div>
+        <div class="logo-card lc3"></div>
+      </div>
+      <div class="logo-text">
+        <span class="logo-four">FOUR</span><span class="logo-of">of</span><span class="logo-life">LIFE</span>
+      </div>
+    </div>
+    <div class="header-tagline">FLIP · MASTER · LEVEL UP</div>
   </div>
-  <div class="header-tagline">FLIP · LEARN · UNDERSTAND</div>
 </header>
 
 <!-- AUTH PANEL -->
 <div id="auth-panel" class="panel">
-  <div class="panel-glow"></div>
+  <div class="card-stack-deco">
+    <div class="cs-card cs1"></div>
+    <div class="cs-card cs2"></div>
+  </div>
   <div class="auth-tabs">
     <button class="auth-tab active" onclick="switchTab('login')">Sign In</button>
     <button class="auth-tab" onclick="switchTab('register')">Register</button>
   </div>
 
-  <!-- LOGIN FORM -->
   <div id="login-form">
     <div class="form-group">
       <label class="form-label">Username</label>
-      <input type="text" id="login-username" placeholder="Enter username...">
+      <input type="text" id="login-username" placeholder="Your handle…">
     </div>
     <div class="form-group">
       <label class="form-label">Password</label>
       <div class="password-wrap">
-        <input type="password" id="login-password" placeholder="Enter password...">
+        <input type="password" id="login-password" placeholder="Secret code…">
         <button class="toggle-pw" onclick="togglePw('login-password', this)">👁</button>
       </div>
     </div>
     <div id="login-error" class="form-error hidden"></div>
-    <button onclick="loginPlayer()" class="btn-primary">→ Sign In</button>
+    <button onclick="loginPlayer()" class="btn-primary">Enter  →</button>
   </div>
 
-  <!-- REGISTER FORM -->
   <div id="register-form" class="hidden">
     <div class="form-group">
-      <label class="form-label">Choose Avatar</label>
+      <label class="form-label">Pick your Avatar</label>
       <div id="reg-avatars" class="avatars-row">
-        <!-- Row 1: 5 avatars -->
         <img src="https://api.dicebear.com/7.x/bottts/svg?seed=alpha&backgroundColor=1a2e1a"   class="avatar" alt="A1">
-        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=beta&backgroundColor=1a2e25"    class="avatar" alt="A2">
-        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=gamma&backgroundColor=0d2010"   class="avatar" alt="A3">
-        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=delta&backgroundColor=162b1a"   class="avatar" alt="A4">
-        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=epsilon&backgroundColor=1e2e1a" class="avatar" alt="A5">
-        <!-- Row 2: 5 more avatars -->
-        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=zeta&backgroundColor=0a1f12"    class="avatar" alt="A6">
-        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=eta&backgroundColor=112518"     class="avatar" alt="A7">
-        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=theta&backgroundColor=18301e"   class="avatar" alt="A8">
-        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=iota&backgroundColor=0e2215"    class="avatar" alt="A9">
-        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=kappa&backgroundColor=152919"   class="avatar" alt="A10">
+        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=beta&backgroundColor=c4520a"    class="avatar" alt="A2">
+        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=gamma&backgroundColor=1a3a5c"   class="avatar" alt="A3">
+        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=delta&backgroundColor=5c1a3a"   class="avatar" alt="A4">
+        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=epsilon&backgroundColor=3a3a1a" class="avatar" alt="A5">
+        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=zeta&backgroundColor=1a1a5c"    class="avatar" alt="A6">
+        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=eta&backgroundColor=0a2f1a"     class="avatar" alt="A7">
+        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=theta&backgroundColor=2f1a0a"   class="avatar" alt="A8">
+        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=iota&backgroundColor=0a1a2f"    class="avatar" alt="A9">
+        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=kappa&backgroundColor=2a0a2a"   class="avatar" alt="A10">
       </div>
     </div>
     <div class="form-group">
       <label class="form-label">Username</label>
-      <input type="text" id="reg-username" placeholder="Pick a username...">
+      <input type="text" id="reg-username" placeholder="Choose a name…">
     </div>
     <div class="form-group">
       <label class="form-label">Password</label>
       <div class="password-wrap">
-        <input type="password" id="reg-password" placeholder="Create password...">
+        <input type="password" id="reg-password" placeholder="Create password…">
         <button class="toggle-pw" onclick="togglePw('reg-password', this)">👁</button>
       </div>
     </div>
     <div class="form-group">
       <label class="form-label">Confirm Password</label>
       <div class="password-wrap">
-        <input type="password" id="reg-confirm" placeholder="Confirm password...">
+        <input type="password" id="reg-confirm" placeholder="Confirm password…">
         <button class="toggle-pw" onclick="togglePw('reg-confirm', this)">👁</button>
       </div>
     </div>
     <div id="reg-error" class="form-error hidden"></div>
-    <button onclick="registerPlayer()" class="btn-primary">→ Create Account</button>
+    <button onclick="registerPlayer()" class="btn-primary">Create Account →</button>
   </div>
 </div>
 
 <!-- DASHBOARD -->
 <div id="player-dashboard" class="panel hidden">
-  <div class="panel-glow"></div>
+  <div class="dash-card-art">
+    <div class="dash-art-card a1"></div>
+    <div class="dash-art-card a2"></div>
+    <div class="dash-art-card a3"></div>
+    <div class="dash-art-num">4</div>
+  </div>
   <div class="dashboard-hero">
     <img id="dash-avatar" src="" class="dash-avatar-img" alt="">
     <div class="dash-hero-info">
       <div id="dash-name" class="dash-name"></div>
       <div id="dash-stats-row" class="dash-stats-row"></div>
     </div>
-    <button onclick="logoutPlayer()" class="btn-icon-ghost" title="Logout">⏻</button>
+    <button onclick="logoutPlayer()" class="btn-logout" title="Logout">⏻</button>
   </div>
-  <div class="config-section">
-    <div class="config-row">
-      <div class="config-field">
-        <label class="form-label">Category</label>
-        <select id="dash-category">
-          <option value="javascript">⚡ JavaScript</option>
-          <option value="python">🐍 Python</option>
-        </select>
-      </div>
-      <div class="config-field">
-        <label class="form-label">Difficulty</label>
-        <select id="dash-difficulty">
-          <option value="beginner">🌿 Beginner</option>
-          <option value="normal" selected>⚔️ Normal</option>
-          <option value="expert">💀 Expert</option>
-        </select>
-      </div>
+  <div class="section-divider"><span>Configure Session</span></div>
+  <div class="config-row">
+    <div class="config-field">
+      <label class="form-label">Category</label>
+      <select id="dash-category">
+        <option value="javascript">⚡ JavaScript</option>
+        <option value="python">🐍 Python</option>
+      </select>
+    </div>
+    <div class="config-field">
+      <label class="form-label">Difficulty</label>
+      <select id="dash-difficulty">
+        <option value="beginner">🌿 Beginner</option>
+        <option value="normal" selected>⚔️ Normal</option>
+        <option value="expert">💀 Expert</option>
+      </select>
     </div>
   </div>
+  <div class="reviewer-prompt-banner" onclick="openReviewer()">
+    <span class="rpb-icon">📖</span>
+    <div class="rpb-text">
+      <strong>Study first?</strong>
+      <span>Open the Reviewer to browse all cards before playing.</span>
+    </div>
+    <span class="rpb-arrow">→</span>
+  </div>
   <div class="dash-actions">
-    <button onclick="startQuiz()" class="btn-primary">▶ Start Flashcards</button>
+    <button onclick="startQuiz()" class="btn-primary">▶ Flip Some Cards</button>
     <div class="dash-secondary-row">
       <button onclick="showRanking()" class="btn-outline">🏆 Leaderboard</button>
-      <button onclick="showHistory()" class="btn-outline">📋 My History</button>
+      <button onclick="showHistory()" class="btn-outline">📋 History</button>
     </div>
   </div>
 </div>
 
 <!-- QUIZ / FLASHCARD PANEL -->
 <div id="quiz" class="panel hidden">
-  <div class="panel-glow"></div>
-
-  <!-- Top bar -->
   <div class="quiz-topbar">
-    <button onclick="goBack()" class="btn-icon-ghost">← Back</button>
+    <button onclick="goBack()" class="btn-icon-ghost">← Exit</button>
     <div id="quiz-progress-info" class="quiz-progress-info"></div>
     <img id="quiz-avatar" src="" class="quiz-avatar-sm" alt="">
   </div>
 
-  <!-- Progress bar -->
   <div class="progress-bar-wrap">
     <div class="progress-bar-track">
       <div class="progress-bar-fill" id="progress-fill"></div>
@@ -151,74 +219,85 @@
     </div>
   </div>
 
-  <!-- Flip hint -->
-  <div class="flip-hint" id="flip-hint">
-    <span class="flip-hint-icon">↩</span> Select an answer below to reveal the card
-  </div>
+  <!-- THE FLASHCARD — static, never flips -->
+  <div class="flashcard-static" id="flashcard-static">
+    <!-- TOP ROW -->
+    <div class="fc-top-row">
+      <span class="fc-corner-label">QUESTION</span>
+      <span class="fc-meta" id="fc-meta-front"></span>
+    </div>
 
-  <!-- THE FLASHCARD -->
-  <div class="flashcard-scene" id="flashcard-scene" onclick="flipCard()">
-    <div class="flashcard" id="flashcard">
+    <!-- QUESTION BODY -->
+    <div class="fc-question-wrap">
+      <div class="fc-question-mark">"</div>
+      <div class="fc-question" id="fc-question"></div>
+    </div>
 
-      <!-- FRONT: Question -->
-      <div class="flashcard-face flashcard-front">
-        <div class="fc-corner-label">QUESTION</div>
-        <div class="fc-meta" id="fc-meta-front"></div>
-        <div class="fc-question" id="fc-question"></div>
-        <div class="fc-tap-cue" style="display:none;">tap to flip →</div>
-      </div>
+    <!-- ANSWER FLIP CARD — this is what flips -->
+    <div class="answer-flip-scene" id="answer-flip-scene">
+      <div class="answer-flip-card" id="answer-flip-card">
 
-      <!-- BACK: Answer + Explanation (no grade buttons — choices handle grading) -->
-      <div class="flashcard-face flashcard-back">
-        <div class="fc-corner-label answer-label">ANSWER</div>
-        <div class="fc-answer" id="fc-answer"></div>
-        <div class="fc-explanation" id="fc-explanation">
-          <div class="fc-exp-loader" id="fc-exp-loader">
-            <span class="fc-spinner"></span> Loading explanation…
+        <!-- FRONT: hidden placeholder (tap-to-reveal vibe) -->
+        <div class="answer-flip-face answer-flip-front">
+          <div class="affront-label">ANSWER</div>
+          <div class="affront-dots">
+            <span></span><span></span><span></span><span></span><span></span>
           </div>
-          <div class="fc-exp-text" id="fc-exp-text" style="display:none;"></div>
+          <div class="affront-hint">Pick a choice below</div>
         </div>
-        <!-- Self-grade buttons (fallback, hidden when choices used) -->
-        <div class="fc-grade-btns" id="fc-grade-btns" style="display:none;">
-          <button class="fc-btn-wrong" onclick="gradeCard(false, event)">
-            <span class="fc-btn-icon">✗</span><span>Wrong</span>
-          </button>
-          <button class="fc-btn-correct" onclick="gradeCard(true, event)">
-            <span class="fc-btn-icon">✓</span><span>Correct</span>
-          </button>
+
+        <!-- BACK: reveals after choice -->
+        <div class="answer-flip-face answer-flip-back" id="answer-flip-back">
+          <div class="afback-header" id="afback-header">
+            <span class="afback-label" id="afback-label">CORRECT ANSWER</span>
+            <span class="afback-badge" id="afback-badge">✓</span>
+          </div>
+          <div class="afback-answer" id="afback-answer"></div>
+          <div class="afback-result" id="afback-result"></div>
         </div>
+
       </div>
+    </div>
 
-    </div><!-- /flashcard -->
-  </div><!-- /flashcard-scene -->
+    <!-- AI EXPLANATION (below flip card, still inside the static card) -->
+    <div class="fc-explanation" id="fc-explanation">
+      <div class="fc-exp-loader" id="fc-exp-loader" style="display:none;">
+        <span class="fc-spinner"></span> AI is explaining…
+      </div>
+      <div class="fc-exp-text" id="fc-exp-text" style="display:none;"></div>
+    </div>
 
-  <!-- MULTIPLE CHOICE OPTIONS (shown below the card, always visible) -->
+  </div>
+  <!-- END .flashcard-static -->
+
+  <!-- MULTIPLE CHOICE OPTIONS -->
   <div class="fc-choices-wrap">
-    <div class="fc-choices-label">Choose the correct answer:</div>
+    <div class="fc-choices-label">Which answer is correct?</div>
     <div id="fc-choices" class="fc-choices-grid"></div>
   </div>
 
-  <!-- Graded feedback bar (shows after grading) -->
+  <!-- FEEDBACK BAR -->
   <div class="grade-feedback hidden" id="grade-feedback">
-    <span id="grade-feedback-text"></span>
-    <button class="btn-next-card" id="btn-next" onclick="nextQuestion()">
-      Next Card →
-    </button>
+    <div id="grade-feedback-text"></div>
+    <button class="btn-next-card" id="btn-next" onclick="nextQuestion()">Next →</button>
   </div>
-
-</div><!-- /quiz -->
+</div>
 
 <!-- FINAL RESULT -->
 <div id="result" class="panel hidden">
-  <div class="panel-glow"></div>
-  <div class="final-hero">
-    <div class="final-trophy">🏆</div>
-    <h2 class="final-title">Deck Complete!</h2>
-    <div class="final-score-display" id="final-score-display"></div>
-    <div class="final-rank-display" id="final-rank-display"></div>
+  <div class="final-trophy-wrap">
+    <div class="final-card-fan">
+      <div class="fcf-card fc-fan1"></div>
+      <div class="fcf-card fc-fan2"></div>
+      <div class="fcf-card fc-fan3"></div>
+      <div class="final-trophy">🏆</div>
+    </div>
   </div>
+  <h2 class="final-title">Deck Complete!</h2>
+  <div class="final-score-display" id="final-score-display"></div>
+  <div class="final-rank-display" id="final-rank-display"></div>
   <div class="final-actions">
-    <button onclick="showHistory()" class="btn-primary">📋 Review Cards</button>
+    <button onclick="showHistory()" class="btn-primary">📋 Review My Cards</button>
     <button onclick="showRanking()" class="btn-outline">🏆 Leaderboard</button>
     <button onclick="goBack()" class="btn-ghost">← Dashboard</button>
   </div>
@@ -226,7 +305,6 @@
 
 <!-- HISTORY PANEL -->
 <div id="history-panel" class="panel hidden">
-  <div class="panel-glow"></div>
   <div class="panel-topbar">
     <button onclick="goBack()" class="btn-icon-ghost">← Back</button>
     <h2 class="panel-title">My History</h2>
@@ -237,7 +315,6 @@
 
 <!-- RANKING PANEL -->
 <div id="ranking" class="panel hidden">
-  <div class="panel-glow"></div>
   <div class="panel-topbar">
     <button onclick="goBack()" class="btn-icon-ghost">← Back</button>
     <h2 class="panel-title">Leaderboard</h2>

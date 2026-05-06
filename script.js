@@ -101,7 +101,6 @@ function bassLoop(ctx, st) {
       osc.type = 'sine'; osc.frequency.setValueAtTime(chord.bass, when);
       g.gain.setValueAtTime(0, when);
       g.gain.linearRampToValueAtTime(0.11, when + 0.5);
-      g.gain.setValueAtTime(0.11, when + CHORD_DUR - 0.8);
       g.gain.linearRampToValueAtTime(0, when + CHORD_DUR);
       osc.start(when); osc.stop(when + CHORD_DUR + 0.1);
     } catch(e) {}
@@ -176,7 +175,6 @@ let score            = 0;
 let category         = 'javascript';
 let currentDiff      = 'normal';
 let currentQuestions = [];
-let isFlipped        = false;
 let isGraded         = false;
 let sessionHistory   = [];
 let currentChoices   = [];
@@ -225,13 +223,12 @@ async function registerPlayer() {
   const username = document.getElementById('reg-username').value.trim();
   const pw       = document.getElementById('reg-password').value;
   const confirm  = document.getElementById('reg-confirm').value;
-
-  if (!selectedAvatar)  { showError('reg-error', 'Please choose an avatar.');                 return; }
-  if (!username)         { showError('reg-error', 'Username is required.');                   return; }
+  if (!selectedAvatar)  { showError('reg-error', 'Please choose an avatar.'); return; }
+  if (!username)         { showError('reg-error', 'Username is required.'); return; }
   if (username.length < 2) { showError('reg-error', 'Username must be at least 2 characters.'); return; }
-  if (!pw)               { showError('reg-error', 'Password is required.');                   return; }
+  if (!pw)               { showError('reg-error', 'Password is required.'); return; }
   if (pw.length < 4)     { showError('reg-error', 'Password must be at least 4 characters.'); return; }
-  if (pw !== confirm)    { showError('reg-error', 'Passwords do not match.');                 return; }
+  if (pw !== confirm)    { showError('reg-error', 'Passwords do not match.'); return; }
   if (players.find(p => p.name.toLowerCase() === username.toLowerCase())) {
     showError('reg-error', 'Username already taken.'); return;
   }
@@ -274,6 +271,7 @@ function logoutPlayer() {
   document.getElementById('auth-panel').classList.remove('hidden');
   document.getElementById('login-username').value = '';
   document.getElementById('login-password').value = '';
+  document.getElementById('reviewer-fab').style.display = 'flex';
 }
 
 // ============================================================
@@ -282,6 +280,7 @@ function logoutPlayer() {
 function goToDashboard() {
   hideAllPanels();
   document.getElementById('player-dashboard').classList.remove('hidden');
+  document.getElementById('reviewer-fab').style.display = 'flex';
   updateDashboard();
 }
 function updateDashboard() {
@@ -299,6 +298,95 @@ function updateDashboard() {
 }
 
 // ============================================================
+// REVIEWER MODE
+// ============================================================
+let reviewerFlipped = new Set();
+
+function openReviewer() {
+  soundClick();
+  const overlay = document.getElementById('reviewer-overlay');
+  overlay.classList.remove('hidden');
+  const dashCat = document.getElementById('dash-category');
+  const revCat  = document.getElementById('rev-category');
+  if (dashCat && !document.getElementById('player-dashboard').classList.contains('hidden')) {
+    revCat.value = dashCat.value;
+  }
+  loadReviewer();
+}
+
+function closeReviewer() {
+  soundClick();
+  document.getElementById('reviewer-overlay').classList.add('hidden');
+}
+
+function loadReviewer() {
+  reviewerFlipped = new Set();
+  filterReviewer();
+}
+
+function filterReviewer() {
+  const cat       = document.getElementById('rev-category').value;
+  const level     = document.getElementById('rev-level').value;
+  const search    = (document.getElementById('rev-search').value || '').toLowerCase().trim();
+  const container = document.getElementById('reviewer-cards');
+  container.innerHTML = '';
+
+  let allCards = [];
+  const levels = level === 'all' ? [1,2,3,4,5] : [parseInt(level)];
+
+  levels.forEach(lvl => {
+    const arr = database[cat]['level' + lvl] || [];
+    arr.forEach(q => allCards.push({ ...q, _level: lvl }));
+  });
+
+  if (search) {
+    allCards = allCards.filter(c =>
+      c.q.toLowerCase().includes(search) || c.a.toLowerCase().includes(search)
+    );
+  }
+
+  document.getElementById('rev-count').textContent = `${allCards.length} card${allCards.length !== 1 ? 's' : ''}`;
+
+  if (!allCards.length) {
+    container.innerHTML = '<div class="rev-empty">No cards match your search.</div>';
+    return;
+  }
+
+  allCards.forEach((card) => {
+    const key = `${cat}-${card._level}-${card.q}`;
+    const isFlippedCard = reviewerFlipped.has(key);
+    const el = document.createElement('div');
+    el.className = 'rev-card' + (isFlippedCard ? ' flipped-rev' : '');
+    el.innerHTML = `
+      <div class="rev-card-level">Level ${card._level} · ${cat.toUpperCase()}</div>
+      <div class="rev-card-q">${card.q}</div>
+      <div class="rev-card-divider"></div>
+      ${isFlippedCard
+        ? `<div class="rev-card-a">${card.a}</div>`
+        : `<div class="rev-card-tap" onclick="toggleRevCard(this, '${key}', '${escQ(card.a)}')">Tap to reveal answer</div>`
+      }
+    `;
+    container.appendChild(el);
+  });
+}
+
+function escQ(str) {
+  return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+function toggleRevCard(tapEl, key, answer) {
+  soundFlip();
+  reviewerFlipped.add(key);
+  const card = tapEl.closest('.rev-card');
+  card.classList.add('flipped-rev');
+  tapEl.outerHTML = `<div class="rev-card-a">${answer}</div>`;
+}
+
+document.getElementById('reviewer-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeReviewer();
+});
+
+// ============================================================
 // QUIZ START
 // ============================================================
 function startQuiz() {
@@ -311,9 +399,11 @@ function startQuiz() {
   hideAllPanels();
   document.getElementById('quiz').classList.remove('hidden');
   document.getElementById('quiz-avatar').src = currentPlayer.avatar;
+  document.getElementById('reviewer-fab').style.display = 'flex';
   startBgMusic();
   showQ();
 }
+
 function buildQuestionPool(cat, diff) {
   const cfg = difficultyConfig[diff];
   let pool = [];
@@ -324,6 +414,7 @@ function buildQuestionPool(cat, diff) {
   });
   return shuffle(pool).slice(0, cfg.qCount);
 }
+
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -337,80 +428,83 @@ function shuffle(arr) {
 // GENERATE MULTIPLE CHOICE OPTIONS
 // ============================================================
 function buildChoices(correctAnswer, cat) {
-  // Gather all answers from the same category across all levels
   const allAnswers = [];
   Object.values(database[cat]).forEach(levelArr => {
     levelArr.forEach(q => {
       if (q.a !== correctAnswer) allAnswers.push(q.a);
     });
   });
-  // Shuffle and pick 3 distractors
   const distractors = shuffle(allAnswers).slice(0, 3);
-  // Combine with correct, shuffle
-  const choices = shuffle([correctAnswer, ...distractors]);
-  return choices;
+  return shuffle([correctAnswer, ...distractors]);
 }
 
 // ============================================================
-// SHOW QUESTION (flashcard front)
+// SHOW QUESTION — resets UI for new card
 // ============================================================
 function showQ() {
-  isFlipped = false;
-  isGraded  = false;
+  isGraded = false;
 
   const q     = currentQuestions[index];
   const cfg   = difficultyConfig[currentDiff];
   const total = currentQuestions.length;
 
-  // Reset card to front
-  const card = document.getElementById('flashcard');
-  card.classList.remove('is-flipped');
+  // ── Reset the answer flip card back to FRONT (unflipped) ──
+  const flipCard = document.getElementById('answer-flip-card');
+  flipCard.classList.remove('flipped');
 
-  // Progress
+  // Reset back face state classes
+  const backFace = document.getElementById('answer-flip-back');
+  backFace.classList.remove('state-correct', 'state-wrong');
+
+  // Reset back face content
+  document.getElementById('afback-answer').textContent = '';
+  document.getElementById('afback-result').textContent = '';
+  document.getElementById('afback-result').className = 'afback-result';
+  document.getElementById('afback-badge').textContent = '✓';
+  document.getElementById('afback-badge').className = 'afback-badge';
+  document.getElementById('afback-label').textContent = 'CORRECT ANSWER';
+
+  // ── Reset explanation ──
+  const expArea = document.getElementById('fc-explanation');
+  expArea.setAttribute('data-hidden', 'true');
+  expArea.style.display = 'none';
+  document.getElementById('fc-exp-loader').style.display = 'none';
+  document.getElementById('fc-exp-text').style.display   = 'none';
+  document.getElementById('fc-exp-text').textContent     = '';
+
+  // ── Progress bar & labels ──
   const pct = (index / total) * 100;
   document.getElementById('progress-fill').style.width = pct + '%';
   document.getElementById('prog-score').textContent = `Score: ${score}`;
   document.getElementById('prog-tag').textContent = `${cfg.label}  ·  Lv${q._level}`;
   document.getElementById('quiz-progress-info').textContent = `Card ${index + 1} / ${total}`;
 
-  // Front content
-  document.getElementById('fc-meta-front').textContent =
-    `${category.toUpperCase()} · Level ${q._level}`;
+  // ── Question content ──
+  document.getElementById('fc-meta-front').textContent = `${category.toUpperCase()} · Level ${q._level}`;
   document.getElementById('fc-question').textContent = q.q;
 
-  // Back content — reset
-  document.getElementById('fc-answer').textContent = q.a;
-  document.getElementById('fc-exp-loader').style.display = 'flex';
-  document.getElementById('fc-exp-text').style.display   = 'none';
-  document.getElementById('fc-exp-text').textContent     = '';
-
-  // Build multiple choice options
+  // ── Build choices ──
   currentChoices = buildChoices(q.a, category);
   renderChoices(currentChoices, q.a);
 
-  // Re-show grade buttons area, hide feedback
-  document.getElementById('fc-grade-btns').style.display = '';
+  // ── Reset feedback bar ──
   const fb = document.getElementById('grade-feedback');
   fb.classList.add('hidden');
   fb.classList.remove('correct-fb', 'wrong-fb');
-
-  // Show flip hint
-  document.getElementById('flip-hint').style.opacity = '1';
 }
 
 // ============================================================
-// RENDER MULTIPLE CHOICE BUTTONS
+// RENDER CHOICES
 // ============================================================
 function renderChoices(choices, correctAnswer) {
   const container = document.getElementById('fc-choices');
   container.innerHTML = '';
-  container.style.display = 'grid';
   choices.forEach((choice, i) => {
     const btn = document.createElement('button');
     btn.className = 'fc-choice-btn';
-    btn.dataset.answer = choice;
+    btn.dataset.answer  = choice;
     btn.dataset.correct = (choice === correctAnswer) ? 'true' : 'false';
-    const label = String.fromCharCode(65 + i); // A, B, C...
+    const label = String.fromCharCode(65 + i);
     btn.innerHTML = `<span class="fc-choice-label">${label}</span><span class="fc-choice-text">${choice}</span>`;
     btn.addEventListener('click', (e) => onChoiceClick(btn, correctAnswer, e));
     container.appendChild(btn);
@@ -418,40 +512,70 @@ function renderChoices(choices, correctAnswer) {
 }
 
 // ============================================================
-// HANDLE CHOICE CLICK
+// HANDLE CHOICE CLICK — flips the answer mini-card
 // ============================================================
 function onChoiceClick(btn, correctAnswer, event) {
   event.stopPropagation();
   if (isGraded) return;
 
-  // Grade immediately based on the choice
   const isCorrect = btn.dataset.correct === 'true';
+
+  // Grade and update choices UI
   gradeByChoice(isCorrect, btn, correctAnswer);
 
-  // Flip the card after a short pause so player sees the choice result first
-  setTimeout(() => {
-    if (!isFlipped) {
-      soundFlip();
-      isFlipped = true;
-      document.getElementById('flashcard').classList.add('is-flipped');
-      document.getElementById('flip-hint').style.opacity = '0';
-      const q = currentQuestions[index];
-      loadExplanation(q.q, q.a);
-    }
-  }, 600);
+  // ── Populate the back face BEFORE flipping ──
+  const backFace = document.getElementById('answer-flip-back');
+  const badge    = document.getElementById('afback-badge');
+  const label    = document.getElementById('afback-label');
+  const answerEl = document.getElementById('afback-answer');
+  const resultEl = document.getElementById('afback-result');
+
+  answerEl.textContent = correctAnswer;
+
+  if (isCorrect) {
+    backFace.classList.add('state-correct');
+    badge.textContent = '✓';
+    badge.classList.remove('badge-wrong');
+    label.textContent = 'CORRECT ANSWER';
+    resultEl.textContent = '✓ Correct!';
+    resultEl.className = 'afback-result result-correct';
+  } else {
+    backFace.classList.add('state-wrong');
+    badge.textContent = '✗';
+    badge.classList.add('badge-wrong');
+    label.textContent = 'CORRECT ANSWER';
+    resultEl.textContent = '✗ Wrong';
+    resultEl.className = 'afback-result result-wrong';
+  }
+
+  // ── Flip the answer card (rotateX) ──
+  soundFlip();
+  const flipCard = document.getElementById('answer-flip-card');
+  flipCard.classList.add('flipped');
+
+  // ── Show explanation area and start AI load ──
+  const expArea = document.getElementById('fc-explanation');
+  expArea.removeAttribute('data-hidden');
+  expArea.style.display = 'block';
+  document.getElementById('fc-exp-loader').style.display = 'flex';
+  document.getElementById('fc-exp-text').style.display   = 'none';
+
+  const q = currentQuestions[index];
+  loadExplanation(q.q, q.a);
 }
 
 // ============================================================
-// GRADE BY CHOICE SELECTION
+// GRADE BY CHOICE — updates score + choice button states
 // ============================================================
 function gradeByChoice(isCorrect, selectedBtn, correctAnswer) {
   if (isGraded) return;
   isGraded = true;
 
   const q = currentQuestions[index];
+
   if (isCorrect) { score++; soundCorrect(); } else { soundWrong(); }
 
-  // Highlight all buttons
+  // Disable + style choices
   document.querySelectorAll('.fc-choice-btn').forEach(btn => {
     btn.disabled = true;
     if (btn.dataset.correct === 'true') {
@@ -463,7 +587,7 @@ function gradeByChoice(isCorrect, selectedBtn, correctAnswer) {
     }
   });
 
-  // Record in session history
+  // Save history
   sessionHistory.push({
     question: q.q,
     correctAnswer: q.a,
@@ -473,34 +597,30 @@ function gradeByChoice(isCorrect, selectedBtn, correctAnswer) {
     category,
   });
 
-  // Hide self-grade buttons (not needed since choice handles grading)
-  document.getElementById('fc-grade-btns').style.display = 'none';
-
-  // Show feedback bar
+  // Bottom feedback bar
   const fb = document.getElementById('grade-feedback');
   const fbText = document.getElementById('grade-feedback-text');
   fb.classList.remove('hidden', 'correct-fb', 'wrong-fb');
 
   if (isCorrect) {
     fb.classList.add('correct-fb');
-    fbText.innerHTML = `<span style="color:var(--green2)">✓ Correct!</span> · ${score} pts`;
+    fbText.innerHTML = `<span style="color:var(--lime)">✓ Correct!</span> &nbsp;·&nbsp; ${score} pts`;
   } else {
     fb.classList.add('wrong-fb');
-    fbText.innerHTML = `<span style="color:var(--red)">✗ Wrong</span> · Answer: <span style="color:var(--green2)">${correctAnswer}</span>`;
+    fbText.innerHTML = `<span style="color:var(--amber)">✗ Wrong</span> &nbsp;·&nbsp; <span style="color:var(--jade)">${correctAnswer}</span>`;
   }
-}
-
-// ============================================================
-// FLIP CARD — disabled for manual tap, only triggered after answer selection
-// ============================================================
-function flipCard() {
-  // Intentionally blocked — card flips automatically after player picks an answer
 }
 
 // ============================================================
 // AI EXPLANATION
 // ============================================================
 async function loadExplanation(question, correctAnswer) {
+  const loader = document.getElementById('fc-exp-loader');
+  const expEl  = document.getElementById('fc-exp-text');
+  loader.style.display = 'flex';
+  expEl.style.display  = 'none';
+  expEl.textContent    = '';
+
   try {
     const prompt = `You are a concise coding instructor.
 
@@ -521,50 +641,14 @@ In 2-3 sentences, explain WHY "${correctAnswer}" is correct and clarify any comm
 
     const data = await res.json();
     const text = data.content?.find(c => c.type === 'text')?.text || 'No explanation available.';
-    document.getElementById('fc-exp-loader').style.display = 'none';
-    const expEl = document.getElementById('fc-exp-text');
-    expEl.textContent = text;
-    expEl.style.display = 'block';
+
+    loader.style.display = 'none';
+    expEl.textContent    = text;
+    expEl.style.display  = 'block';
   } catch(e) {
-    document.getElementById('fc-exp-loader').style.display = 'none';
-    const expEl = document.getElementById('fc-exp-text');
-    expEl.textContent = `The correct answer is "${correctAnswer}". Review the relevant documentation to deepen your understanding.`;
-    expEl.style.display = 'block';
-  }
-}
-
-// ============================================================
-// GRADE CARD (self-assessment: ✓ / ✗) — kept as fallback
-// ============================================================
-function gradeCard(isCorrect, event) {
-  event.stopPropagation();
-  if (isGraded) return;
-  isGraded = true;
-
-  const q = currentQuestions[index];
-  if (isCorrect) { score++; soundCorrect(); } else { soundWrong(); }
-
-  sessionHistory.push({
-    question: q.q,
-    correctAnswer: q.a,
-    selectedAnswer: isCorrect ? q.a : '(self-marked wrong)',
-    isCorrect,
-    level: q._level,
-    category,
-  });
-
-  document.getElementById('fc-grade-btns').style.display = 'none';
-
-  const fb = document.getElementById('grade-feedback');
-  const fbText = document.getElementById('grade-feedback-text');
-  fb.classList.remove('hidden', 'correct-fb', 'wrong-fb');
-
-  if (isCorrect) {
-    fb.classList.add('correct-fb');
-    fbText.innerHTML = `<span style="color:var(--green2)">✓ Marked correct</span> · ${score} pts`;
-  } else {
-    fb.classList.add('wrong-fb');
-    fbText.innerHTML = `<span style="color:var(--red)">✗ Marked wrong</span> · Keep studying!`;
+    loader.style.display = 'none';
+    expEl.textContent    = `The correct answer is "${correctAnswer}". Review the relevant documentation to deepen your understanding.`;
+    expEl.style.display  = 'block';
   }
 }
 
@@ -574,11 +658,7 @@ function gradeCard(isCorrect, event) {
 function nextQuestion() {
   soundClick();
   index++;
-  if (index < currentQuestions.length) {
-    showQ();
-  } else {
-    finishQuiz();
-  }
+  if (index < currentQuestions.length) { showQ(); } else { finishQuiz(); }
 }
 
 // ============================================================
@@ -623,7 +703,7 @@ function renderHistory() {
   list.innerHTML = '';
   const history = currentPlayer?.history || [];
   if (!history.length) {
-    list.innerHTML = '<div class="history-empty">No sessions yet. Play a quiz to build your history!</div>';
+    list.innerHTML = '<div class="history-empty">No sessions yet. Flip some cards to build your history!</div>';
     return;
   }
   history.forEach((session, si) => {
@@ -635,7 +715,7 @@ function renderHistory() {
     header.innerHTML = `
       <div class="history-session-meta">
         ${session.date}<br>
-        <span style="color:var(--green3)">${session.category?.toUpperCase()}</span>
+        <strong style="color:var(--jade)">${session.category?.toUpperCase()}</strong>
         <span class="diff-badge ${session.difficulty}">${session.difficulty}</span>
       </div>
       <div class="history-session-score">${session.score}/${session.total} · ${rate}%</div>
@@ -649,13 +729,15 @@ function renderHistory() {
       row.className = 'history-q-item';
       const selectedDisplay = item.selectedAnswer && item.selectedAnswer !== item.correctAnswer
         ? `<span class="hq-ans yours wrong-ans">You: ${item.selectedAnswer}</span>`
-        : (item.isCorrect ? `<span class="hq-ans yours">✓ You got it</span>` : `<span class="hq-ans yours wrong-ans">✗ You missed it</span>`);
+        : (item.isCorrect
+            ? `<span class="hq-ans yours">✓ You got it</span>`
+            : `<span class="hq-ans yours wrong-ans">✗ You missed it</span>`);
       row.innerHTML = `
         <div class="hq-icon">${item.isCorrect ? '✅' : '❌'}</div>
         <div class="hq-body">
           <div class="hq-question">${item.question}</div>
           <div class="hq-answers">
-            <span class="hq-ans correct-ans">Answer: ${item.correctAnswer}</span>
+            <span class="hq-ans correct-ans">✓ ${item.correctAnswer}</span>
             ${selectedDisplay}
           </div>
           <div class="hq-level">Level ${item.level}</div>
@@ -685,7 +767,7 @@ function renderRanking() {
   const list = document.getElementById('rank-list');
   list.innerHTML = '';
   if (!players.length) {
-    list.innerHTML = '<div class="rank-empty">No warriors yet. Be the first legend!</div>';
+    list.innerHTML = '<div class="rank-empty">No players yet. Be the first legend!</div>';
     return;
   }
   const sorted = [...players].sort((a, b) => b.score - a.score);
